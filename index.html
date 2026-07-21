@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSP por meta: GitHub Pages no permite fijar cabeceras, así que la política va
+       aquí. connect-src incluye el backend en el túnel (Cloudflare, subdominio
+       cambiante -> comodín) y Google Identity Services. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://*.trycloudflare.com https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
+  <!-- Título neutro hasta iniciar sesión; app.js lo cambia tras autenticar. -->
+  <title>Acceso · Global66</title>
+  <style>
+    :root{ --navy:#17324d; --navy2:#21496e; --accent:#b23a2e; --line:#cfd8e3;
+           --bg:#eef2f7; --ok:#1c7a4d; --warn:#b26a00; --ink:#16202b; }
+    *{ box-sizing:border-box; }
+    body{ font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink);
+          margin:0; padding:24px; display:flex; justify-content:center; min-height:100vh; }
+    .wrap{ width:100%; max-width:560px; }
+    header h1{ color:var(--navy); font-size:22px; margin:0 0 2px; }
+    header p{ color:#5a6b7d; font-size:13px; margin:0 0 18px; }
+    .card{ background:#fff; border:1px solid var(--line); border-radius:8px;
+           box-shadow:0 2px 10px rgba(23,50,77,.06); padding:22px 24px; }
+    label{ display:block; font-size:12px; font-weight:600; color:var(--navy2);
+           text-transform:uppercase; letter-spacing:.3px; margin:14px 0 5px; }
+    input[type=text]{ width:100%; padding:10px 12px; border:1px solid var(--line);
+           border-radius:6px; font-size:15px; }
+    input[type=text]:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(33,73,110,.12); }
+    textarea{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:6px;
+           font-size:14px; font-family:inherit; resize:vertical; }
+    textarea:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(33,73,110,.12); }
+    .hint{ font-size:11.5px; color:#7a8896; margin-top:4px; }
+    #vinc-zona{ margin-top:16px; }
+    .btn-sec{ width:auto; margin-top:0; background:#eef3f9; color:var(--navy2); border:1px solid var(--line);
+           padding:9px 14px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; }
+    .btn-sec:hover{ background:#e2ebf5; }
+    .btn-link{ width:auto; margin-top:8px; background:none; color:var(--accent); border:0; padding:0;
+           font-size:12.5px; font-weight:600; cursor:pointer; }
+    .btn-link:hover{ text-decoration:underline; background:none; }
+    .vinc-count{ font-weight:600; color:var(--navy2); }
+    .vinc-count.over{ color:var(--accent); }
+    .row{ display:flex; gap:14px; }
+    .row > div{ flex:1; }
+    button{ width:100%; margin-top:20px; background:var(--navy); color:#fff; border:0;
+            padding:13px; border-radius:6px; font-size:15px; font-weight:600; cursor:pointer; }
+    button:hover{ background:var(--navy2); }
+    button:disabled{ opacity:.65; cursor:progress; }
+
+    /* ---- Logo en la esquina superior (visible solo autenticado) ---- */
+    .topbar{ position:fixed; top:14px; left:18px; z-index:10; }
+    .topbar img{ height:30px; width:auto; display:block; }
+
+    /* ---- Login ---- */
+    #view-login{ display:flex; justify-content:center; align-items:flex-start; padding-top:6vh; }
+    .login-card{ background:#fff; border:1px solid var(--line); border-radius:12px;
+           box-shadow:0 6px 24px rgba(23,50,77,.10); padding:34px 30px; width:100%; max-width:380px;
+           text-align:center; }
+    .login-logo{ height:34px; width:auto; margin-bottom:18px; }
+    .login-title{ color:var(--navy); font-size:20px; margin:0 0 6px; }
+    .login-sub{ color:#6b7a8d; font-size:13px; margin:0 0 22px; line-height:1.5; }
+    .g-btn{ display:flex; justify-content:center; min-height:44px; }
+    .login-msg{ margin-top:18px; font-size:12.5px; color:#7a251c; background:#fbecea;
+           border:1px solid var(--accent); border-radius:6px; padding:10px 12px; line-height:1.5; text-align:left; }
+    .login-foot{ margin-top:20px; font-size:11px; color:#9aa7b4; line-height:1.5; }
+
+    /* ---- Sesión expirada ---- */
+    .expired-card{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; border-radius:10px;
+           padding:22px 24px; font-size:14px; line-height:1.6; }
+    .expired-card strong{ display:block; font-size:16px; margin-bottom:6px; color:#7a4a05; }
+    .expired-card button{ background:var(--navy); }
+
+    /* ---- Asistente (país / tipo de documento) ---- */
+    .paso-titulo{ color:var(--navy); font-size:16px; margin:0 0 14px; }
+    .choice-grid{ display:grid; gap:12px; }
+    .choice-grid.paises{ grid-template-columns:1fr 1fr 1fr; }
+    .choice-grid.tipos{ grid-template-columns:1fr 1fr; }
+    .choice{ width:100%; margin-top:0; background:#fff; color:var(--navy); border:2px solid var(--line);
+             border-radius:10px; padding:22px 10px; font-size:16px; font-weight:700; cursor:pointer;
+             transition:border-color .12s, background .12s, box-shadow .12s; }
+    .choice:hover{ background:#f3f7fc; border-color:var(--navy2); box-shadow:0 3px 10px rgba(23,50,77,.10); }
+    .choice .sub{ display:block; font-size:11px; font-weight:500; color:#7a8896; margin-top:5px;
+                  text-transform:none; letter-spacing:0; }
+    .ctx{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; color:#5a6b7d; }
+    .ctx .pill2{ background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy); border-radius:20px;
+                 padding:4px 12px; font-weight:600; }
+    .back{ width:auto; margin:0 0 12px; background:none; color:var(--navy2); border:0; padding:4px 0;
+           font-size:13px; font-weight:600; cursor:pointer; }
+    .back:hover{ text-decoration:underline; background:none; }
+    .no-disp{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; border-radius:8px;
+              padding:20px 22px; font-size:14px; line-height:1.6; }
+    .no-disp strong{ display:block; font-size:15px; margin-bottom:6px; }
+    .no-disp p{ margin:6px 0 0; }
+    [hidden]{ display:none !important; }
+
+    .banner{ padding:12px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; line-height:1.5; display:none; }
+    .banner.show{ display:block; }
+    .banner.info{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; }
+    .banner.error{ background:#fbecea; border:1px solid var(--accent); color:#7a251c; }
+    .banner.ok{ background:#e8f4ee; border:1px solid #9ccbb4; color:#155f3c; }
+    .banner strong{ display:block; margin-bottom:2px; }
+    .userbar{ display:flex; justify-content:flex-end; align-items:center; gap:10px; font-size:12px;
+              color:#5a6b7d; margin-bottom:6px; }
+    .userbar button{ width:auto; margin:0; background:none; color:var(--navy2); border:0; padding:0;
+              font-size:12px; font-weight:600; cursor:pointer; }
+    .userbar button:hover{ text-decoration:underline; }
+    .reglas{ margin-top:10px; font-size:12px; }
+    .reglas .r{ padding:5px 0; border-top:1px solid rgba(0,0,0,.08); }
+    .reglas .on{ color:var(--accent); font-weight:600; }
+    footer{ margin-top:18px; font-size:11px; color:#8493a3; text-align:center; line-height:1.5; }
+  </style>
+</head>
+<body>
+  <!-- Logo en la esquina superior: visible en todo momento MENOS al iniciar sesión. -->
+  <div id="topbar" class="topbar" hidden>
+    <img src="./global66-cs-logo.webp" alt="Global66">
+  </div>
+
+  <div class="wrap">
+    <!-- ===================== VISTA 0: Iniciar sesión ===================== -->
+    <!-- Lo PRIMERO que se ve. No revela nada del proyecto hasta autenticar. -->
+    <section id="view-login" class="view">
+      <div class="login-card">
+        <img class="login-logo" src="./global66-cs-logo.webp" alt="Global66">
+        <h2 class="login-title">Iniciar sesión</h2>
+        <p class="login-sub">Usa tu cuenta de Google de empresa <b>@global66.com</b></p>
+        <div id="g-btn" class="g-btn"></div>
+        <div id="login-msg" class="login-msg" hidden></div>
+        <div class="login-foot">Acceso restringido al personal autorizado de Global66.</div>
+      </div>
+    </section>
+
+    <!-- ===================== APP (oculta hasta autenticar) ===================== -->
+    <div id="app" hidden>
+      <div class="userbar">
+        <span id="user-email"></span>
+        <button type="button" id="btn-logout">Cerrar sesión</button>
+      </div>
+
+      <header>
+        <h1>Generador de ROS y ROE</h1>
+        <p>Reporte de Operaciones Sospechosas (ROS) y Reporte de Operaciones en Efectivo (ROE)
+           — Unidad de Análisis Financiero</p>
+      </header>
+
+      <div id="banner" class="banner"></div>
+
+      <!-- VISTA 1: País -->
+      <section id="view-pais" class="view">
+        <div class="card">
+          <h2 class="paso-titulo">Selecciona el país</h2>
+          <div class="choice-grid paises">
+            <button type="button" class="choice" data-pais="Argentina">Argentina</button>
+            <button type="button" class="choice" data-pais="Chile">Chile</button>
+            <button type="button" class="choice" data-pais="Colombia">Colombia</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 2: Tipo de documento -->
+      <section id="view-tipo" class="view" hidden>
+        <button type="button" class="back" data-target="pais">← Cambiar país</button>
+        <div class="ctx"><span>País:</span> <span class="pill2" id="ctx-pais-tipo"></span></div>
+        <div class="card">
+          <h2 class="paso-titulo">¿Qué documento quieres generar?</h2>
+          <div class="choice-grid tipos">
+            <button type="button" class="choice" data-tipo="ROS">Generar ROS
+              <span class="sub">Operaciones Sospechosas</span></button>
+            <button type="button" class="choice" data-tipo="ROE">Generar ROE
+              <span class="sub">Operaciones en Efectivo</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA 3: Formulario / No disponible -->
+      <section id="view-form" class="view" hidden>
+        <button type="button" class="back" data-target="tipo">← Volver</button>
+        <div class="ctx">
+          <span>País:</span> <span class="pill2" id="ctx-pais-form"></span>
+          <span>Documento:</span> <span class="pill2" id="ctx-tipo-form"></span>
+        </div>
+
+        <!-- Disponible SOLO para combinaciones registradas (la fuente de verdad es
+             el backend: /config -> core.documentos). -->
+        <div id="form-disponible" class="card" hidden>
+          <form id="form">
+            <input type="hidden" id="pais" name="pais">
+            <input type="hidden" id="tipo_documento" name="tipo_documento">
+
+            <label for="customer_id">ID de cliente</label>
+            <input type="text" id="customer_id" name="customer_id"
+                   placeholder="Ej: 2402916" autocomplete="off">
+            <div class="hint">Identificador del cliente en la base de datos.</div>
+
+            <div class="row">
+              <div>
+                <label for="fecha_inicio">Fecha de inicio</label>
+                <input type="text" id="fecha_inicio" name="fecha_inicio"
+                       placeholder="mm/aaaa" autocomplete="off">
+                <div class="hint">Mes/año, ej: 02/2025</div>
+              </div>
+              <div>
+                <label for="fecha_fin">Fecha de fin <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+                <input type="text" id="fecha_fin" name="fecha_fin"
+                       placeholder="mm/aaaa (actual)" autocomplete="off">
+                <div class="hint">Si se omite, usa el mes/año actual.</div>
+              </div>
+            </div>
+
+            <div id="vinc-zona">
+              <button type="button" id="btn-add-vinc" class="btn-sec">+ Agregar vinculados</button>
+              <div id="vinc-box" hidden>
+                <label for="vinculados">IDs de vinculados
+                  <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+                <textarea id="vinculados" name="vinculados" rows="4" autocomplete="off"
+                  placeholder="IDs separados por coma o uno por línea. Ej:&#10;3105060, 487532&#10;9000001"></textarea>
+                <div class="hint">
+                  Personas naturales y/o jurídicas vinculadas al reportado. Solo se piden
+                  sus IDs (sin fechas). Máximo <span id="vinc-max">15</span>.
+                  <span id="vinc-count" class="vinc-count"></span>
+                </div>
+                <button type="button" id="btn-del-vinc" class="btn-link">Quitar vinculados</button>
+              </div>
+            </div>
+
+            <button type="submit" id="btn">Generar y descargar PDF</button>
+          </form>
+        </div>
+
+        <!-- Resto de combinaciones: aún no disponible -->
+        <div id="form-no-disponible" hidden>
+          <div class="no-disp">
+            <strong>Servicio aún no disponible</strong>
+            <p>La generación de <b id="no-disp-doc"></b> para <b id="no-disp-pais"></b> todavía
+               no está habilitada en esta versión.</p>
+            <p>Usa «<b>← Volver</b>» para elegir otra combinación.</p>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        El PDF generado es un <strong>BORRADOR</strong> de apoyo. La validación y el envío al
+        portal oficial de la UAF son responsabilidad del analista de cumplimiento.
+      </footer>
+    </div>
+
+    <!-- ===================== VISTA: Sesión expirada ===================== -->
+    <section id="view-expired" class="view" hidden>
+      <header><h1>Generador de ROS y ROE</h1></header>
+      <div class="expired-card">
+        <strong>Tu sesión se cerró por inactividad</strong>
+        <p>Por seguridad, cerramos la sesión tras 10 minutos sin actividad.
+           Vuelve a iniciar sesión con tu cuenta <b>@global66.com</b> para continuar.</p>
+        <button type="button" id="btn-relogin">Volver a iniciar sesión</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Google Identity Services (botón oficial) + JS del cliente (externo). -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>
