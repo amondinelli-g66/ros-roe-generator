@@ -54,7 +54,12 @@ re-registro cada vez que cambia la URL del túnel.
 
 Este directorio es un repositorio propio. Para publicarlo:
 
-1. Crear un repo público en GitHub (p. ej. `ros-roe-web`).
-2. `git remote add origin <url>` y `git push -u origin main`.
+1. Crear un repo **público** en GitHub llamado `ros-roe-generator-web` (vacío, sin README).
+2. `git remote add origin https://github.com/amondinelli-g66/ros-roe-generator-web.git`
+   y `git push -u origin main`.
 3. En **Settings → Pages**, elegir la rama `main` / carpeta raíz. GitHub sirve el sitio en
-   `https://amondinelli-g66.github.io/<repo>/`.
+   `https://amondinelli-g66.github.io/ros-roe-generator-web/`.
+
+> El backend autoriza el **dominio** `https://amondinelli-g66.github.io` (sin la ruta), así que
+> este mismo origen sirve para futuras automatizaciones publicadas como otros repos de proyecto
+> bajo la misma cuenta.
