@@ -246,11 +246,17 @@
     var USA_VINC = new Set();
     // Qué formulario muestra cada documento: "ros" (estándar) o "roe-chile", etc.
     var FORMULARIOS = {};
-    // Meses de cada trimestre (para el selector del ROE de Chile).
+    // Meses y nombre de cada trimestre (para el selector del ROE de Chile).
     var MESES_TRIM = {
       "1": "enero, febrero y marzo", "2": "abril, mayo y junio",
       "3": "julio, agosto y septiembre", "4": "octubre, noviembre y diciembre",
     };
+    var TRIM_LABEL = {
+      "1": "Primer Trimestre", "2": "Segundo Trimestre",
+      "3": "Tercer Trimestre", "4": "Cuarto Trimestre",
+    };
+    // Referencia de fecha del servidor (la entrega /config): año/trimestre actual + año mínimo.
+    var ROE_CFG = { anio_min: 2018, anio_actual: null, trimestre_actual: null };
     var viewPais = $("view-pais"), viewTipo = $("view-tipo"), viewForm = $("view-form");
 
     function limpiarBanner() { banner.className = "banner"; banner.innerHTML = ""; }
@@ -337,6 +343,10 @@
         cfg.documentos.forEach(function (d) {
           FORMULARIOS[d.pais + "|" + d.tipo] = d.formulario || "ros";
         });
+      }
+      if (cfg && cfg.roe_chile) {
+        ROE_CFG = cfg.roe_chile;
+        poblarAnios();   // con la fecha del servidor, arma el selector de años del ROE
       }
     }).catch(function () {});
 
@@ -429,10 +439,57 @@
     var formRoe = $("form-roe"), roeAnio = $("roe-anio"), roeTrim = $("roe-trimestre");
     var roeSocs = $("roe-socs"), roeSocInput = $("roe-sociedad"), btnRoe = $("btn-roe");
     var roeTrimHint = $("roe-trim-hint");
-    var ROE_TRIM_HINT_BASE = "Pasa el mouse sobre el selector para ver los meses de cada trimestre.";
+    var ROE_TRIM_HINT_BASE = "Pasa el mouse sobre una opción para ver sus meses.";
+
+    // Años elegibles (del más reciente al más antiguo, >= anio_min). Hasta el año
+    // actual, salvo que hoy sea 1er trimestre (nada cerrado aún) -> hasta año-1.
+    function aniosSeleccionables() {
+      if (!ROE_CFG.anio_actual) return [];
+      var max = (ROE_CFG.trimestre_actual >= 2) ? ROE_CFG.anio_actual : ROE_CFG.anio_actual - 1;
+      var out = [];
+      for (var y = max; y >= ROE_CFG.anio_min; y--) out.push(y);
+      return out;
+    }
+    // Trimestres del año que YA terminaron (hoy está en uno estrictamente posterior).
+    function trimestresSeleccionables(anio) {
+      anio = parseInt(anio, 10);
+      if (!ROE_CFG.anio_actual || !anio) return [];
+      if (anio < ROE_CFG.anio_actual) return [1, 2, 3, 4];
+      if (anio === ROE_CFG.anio_actual) {
+        var out = [];
+        for (var t = 1; t < ROE_CFG.trimestre_actual; t++) out.push(t);
+        return out;
+      }
+      return [];
+    }
+
+    function poblarAnios() {
+      if (!roeAnio) return;
+      var html = '<option value="">Selecciona un año…</option>';
+      aniosSeleccionables().forEach(function (y) {
+        html += '<option value="' + y + '">' + y + '</option>';
+      });
+      roeAnio.innerHTML = html;
+      poblarTrimestres();
+    }
+
+    // El trimestre depende del año: solo se ofrecen los que ya terminaron.
+    function poblarTrimestres() {
+      if (!roeTrim) return;
+      var trims = trimestresSeleccionables(roeAnio.value);
+      var html = '<option value="">' +
+        (roeAnio.value ? "Selecciona un trimestre…" : "Selecciona primero el año…") + "</option>";
+      trims.forEach(function (t) {
+        html += '<option value="' + t + '" title="' + MESES_TRIM[t] + '">' + TRIM_LABEL[t] + "</option>";
+      });
+      roeTrim.innerHTML = html;
+      roeTrim.disabled = trims.length === 0;
+      roeTrimHint.textContent = ROE_TRIM_HINT_BASE;
+      roeTrim.removeAttribute("title");
+    }
 
     function roeCompleto() {
-      return /^\d{4}$/.test((roeAnio.value || "").trim())
+      return !!roeAnio.value
         && ["1", "2", "3", "4"].indexOf(roeTrim.value) !== -1
         && !!roeSocInput.value;
     }
@@ -440,11 +497,10 @@
 
     function resetRoe() {
       if (!formRoe) return;
-      formRoe.reset();
+      if (roeAnio.options.length) roeAnio.selectedIndex = 0;   // vuelve al placeholder
+      poblarTrimestres();                                      // trimestre: deshabilitado
       roeSocInput.value = "";
       roeSocs.querySelectorAll(".soc").forEach(function (x) { x.classList.remove("sel"); });
-      roeTrimHint.textContent = ROE_TRIM_HINT_BASE;
-      roeTrim.removeAttribute("title");
       btnRoe.disabled = true;
     }
 
@@ -472,11 +528,14 @@
     function initRoeChile() {
       if (!formRoe) return;
       // Cambiar cualquier campo borra el mensaje previo y recalcula si el botón se habilita.
-      roeAnio.addEventListener("input", function () { limpiarBanner(); actualizarRoeBtn(); });
+      roeAnio.addEventListener("change", function () {
+        poblarTrimestres();      // los trimestres válidos dependen del año elegido
+        limpiarBanner(); actualizarRoeBtn();
+      });
       roeTrim.addEventListener("change", function () {
         var meses = MESES_TRIM[roeTrim.value];
         if (meses) {
-          roeTrimHint.textContent = "Trimestre " + roeTrim.value + ": " + meses + ".";
+          roeTrimHint.textContent = TRIM_LABEL[roeTrim.value] + ": " + meses + ".";
           roeTrim.title = meses;
         } else {
           roeTrimHint.textContent = ROE_TRIM_HINT_BASE;
@@ -513,6 +572,11 @@
               mostrarBanner("ok", "ROE generado",
                 " Se " + (nombres.length > 1 ? "descargaron los archivos" : "descargó el archivo")
                 + ": " + nombres.join(", ") + ".");
+            } else if (d.estado === "ROE_NEGATIVO") {
+              mostrarBanner("warn", "Corresponde un ROE Negativo",
+                " " + (d.mensaje || ("Para " + (d.sociedad || "la sociedad") + " no se registraron "
+                + "operaciones en efectivo sobre USD 10.000 en el período. Debes declarar un "
+                + "ROE Negativo en la UAF.")));
             } else if (d.estado === "FALTAN_CARTOLAS") {
               mostrarBanner("error", "No se puede generar el ROE todavía", " " + (d.mensaje || ""));
             } else {

@@ -102,6 +102,8 @@
     .banner.info{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; }
     .banner.error{ background:#fbecea; border:1px solid var(--accent); color:#7a251c; }
     .banner.ok{ background:#e8f4ee; border:1px solid #9ccbb4; color:#155f3c; }
+    /* Amarillo (ROE Negativo): sin cartolas faltantes pero sin operaciones sobre el umbral. */
+    .banner.warn{ background:#fdf3c7; border:1px solid #e0b400; color:#6b5300; }
     .banner strong{ display:block; margin-bottom:2px; }
     .userbar{ display:flex; justify-content:flex-end; align-items:center; gap:10px; font-size:12px;
               color:#5a6b7d; margin-bottom:6px; }
@@ -235,20 +237,16 @@
         <div id="form-roe-chile" class="card" hidden>
           <form id="form-roe">
             <label for="roe-anio">Año</label>
-            <input type="text" id="roe-anio" name="anio" inputmode="numeric" maxlength="4"
-                   placeholder="Ej: 2025" autocomplete="off">
-            <div class="hint">Año del reporte (4 dígitos).</div>
+            <select id="roe-anio" name="anio">
+              <option value="">Selecciona un año…</option>
+            </select>
+            <div class="hint">Se ofrecen desde 2018 hasta el año más reciente con trimestres ya cerrados.</div>
 
             <label for="roe-trimestre">Trimestre</label>
-            <select id="roe-trimestre" name="trimestre">
-              <option value="">Selecciona un trimestre…</option>
-              <option value="1" title="enero, febrero y marzo">Trimestre 1</option>
-              <option value="2" title="abril, mayo y junio">Trimestre 2</option>
-              <option value="3" title="julio, agosto y septiembre">Trimestre 3</option>
-              <option value="4" title="octubre, noviembre y diciembre">Trimestre 4</option>
+            <select id="roe-trimestre" name="trimestre" disabled>
+              <option value="">Selecciona primero el año…</option>
             </select>
-            <div class="hint" id="roe-trim-hint">Pasa el mouse sobre el selector para ver los
-              meses de cada trimestre.</div>
+            <div class="hint" id="roe-trim-hint">Pasa el mouse sobre una opción para ver sus meses.</div>
 
             <label style="margin-top:16px">Sociedad</label>
             <div class="soc-grid" id="roe-socs">
