@@ -244,7 +244,22 @@
     var DISPONIBLES = new Set();
     // Documentos que admiten vinculados (Colombia reporta un único ID -> sin vinculados).
     var USA_VINC = new Set();
+    // Qué formulario muestra cada documento: "ros" (estándar) o "roe-chile", etc.
+    var FORMULARIOS = {};
+    // Meses y nombre de cada trimestre (para el selector del ROE de Chile).
+    var MESES_TRIM = {
+      "1": "enero, febrero y marzo", "2": "abril, mayo y junio",
+      "3": "julio, agosto y septiembre", "4": "octubre, noviembre y diciembre",
+    };
+    var TRIM_LABEL = {
+      "1": "Primer Trimestre", "2": "Segundo Trimestre",
+      "3": "Tercer Trimestre", "4": "Cuarto Trimestre",
+    };
+    // Referencia de fecha del servidor (la entrega /config): año/trimestre actual + año mínimo.
+    var ROE_CFG = { anio_min: 2018, anio_actual: null, trimestre_actual: null };
     var viewPais = $("view-pais"), viewTipo = $("view-tipo"), viewForm = $("view-form");
+
+    function limpiarBanner() { banner.className = "banner"; banner.innerHTML = ""; }
 
     function mostrarVista(v) {
       [viewPais, viewTipo, viewForm].forEach(function (x) { x.hidden = true; });
@@ -265,25 +280,34 @@
         tipoSel = b.dataset.tipo;
         $("ctx-pais-form").textContent = paisSel;
         $("ctx-tipo-form").textContent = tipoSel;
-        var disponible = DISPONIBLES.has(paisSel + "|" + tipoSel);
-        $("form-disponible").hidden = !disponible;
-        $("form-no-disponible").hidden = disponible;
-        if (disponible) {
+        var clave = paisSel + "|" + tipoSel;
+        var disponible = DISPONIBLES.has(clave);
+        var formulario = FORMULARIOS[clave] || "ros";
+        var esRoeChile = disponible && formulario === "roe-chile";
+        var esRosStd = disponible && !esRoeChile;
+
+        $("form-disponible").hidden = !esRosStd;
+        $("form-roe-chile").hidden = !esRoeChile;
+        $("form-no-disponible").hidden = disponible;   // no-disponible solo si NO hay generador
+
+        if (esRosStd) {
           $("pais").value = paisSel;
           $("tipo_documento").value = tipoSel;
           // Vinculados solo para documentos que los admiten (no en Colombia).
-          var usaVinc = USA_VINC.has(paisSel + "|" + tipoSel);
+          var usaVinc = USA_VINC.has(clave);
           $("vinc-zona").hidden = !usaVinc;
           if (!usaVinc) {   // limpiar por si venía de un documento que sí los usa
             $("vinculados").value = "";
             $("vinc-box").hidden = true;
             $("btn-add-vinc").hidden = false;
           }
+        } else if (esRoeChile) {
+          resetRoe();   // deja el formulario ROE limpio al entrar
         } else {
           $("no-disp-doc").textContent = tipoSel;
           $("no-disp-pais").textContent = paisSel;
         }
-        banner.className = "banner";
+        limpiarBanner();
         mostrarVista(viewForm);
       });
     });
@@ -315,6 +339,14 @@
           .map(function (d) { return d.pais + "|" + d.tipo; }));
         USA_VINC = new Set(cfg.documentos.filter(function (d) { return d.usa_vinculados; })
           .map(function (d) { return d.pais + "|" + d.tipo; }));
+        FORMULARIOS = {};
+        cfg.documentos.forEach(function (d) {
+          FORMULARIOS[d.pais + "|" + d.tipo] = d.formulario || "ros";
+        });
+      }
+      if (cfg && cfg.roe_chile) {
+        ROE_CFG = cfg.roe_chile;
+        poblarAnios();   // con la fecha del servidor, arma el selector de años del ROE
       }
     }).catch(function () {});
 
@@ -336,6 +368,9 @@
       vincTa.value = ""; vincBox.hidden = true; btnAddVinc.hidden = false; actualizarConteoVinc();
     });
     vincTa.addEventListener("input", actualizarConteoVinc);
+    // Al editar cualquier campo del formulario ROS, borra el mensaje de éxito/error
+    // previo (p. ej. tras generar un PDF y luego cambiar un dato).
+    form.addEventListener("input", limpiarBanner);
 
     function mostrarBanner(tipo, titulo, mensaje, reglas) {
       banner.className = "banner show " + tipo;
@@ -397,6 +432,168 @@
           btn.textContent = "Generar y descargar PDF";
         });
     });
+
+    // ------------------------------------------------------------------- //
+    // ROE de Chile: año + trimestre + sociedad -> hasta 2 archivos XLSX
+    // ------------------------------------------------------------------- //
+    var formRoe = $("form-roe"), roeAnio = $("roe-anio"), roeTrim = $("roe-trimestre");
+    var roeSocs = $("roe-socs"), roeSocInput = $("roe-sociedad"), btnRoe = $("btn-roe");
+    var roeTrimHint = $("roe-trim-hint");
+    var ROE_TRIM_HINT_BASE = "Pasa el mouse sobre una opción para ver sus meses.";
+
+    // Años elegibles (del más reciente al más antiguo, >= anio_min). Hasta el año
+    // actual, salvo que hoy sea 1er trimestre (nada cerrado aún) -> hasta año-1.
+    function aniosSeleccionables() {
+      if (!ROE_CFG.anio_actual) return [];
+      var max = (ROE_CFG.trimestre_actual >= 2) ? ROE_CFG.anio_actual : ROE_CFG.anio_actual - 1;
+      var out = [];
+      for (var y = max; y >= ROE_CFG.anio_min; y--) out.push(y);
+      return out;
+    }
+    // Trimestres del año que YA terminaron (hoy está en uno estrictamente posterior).
+    function trimestresSeleccionables(anio) {
+      anio = parseInt(anio, 10);
+      if (!ROE_CFG.anio_actual || !anio) return [];
+      if (anio < ROE_CFG.anio_actual) return [1, 2, 3, 4];
+      if (anio === ROE_CFG.anio_actual) {
+        var out = [];
+        for (var t = 1; t < ROE_CFG.trimestre_actual; t++) out.push(t);
+        return out;
+      }
+      return [];
+    }
+
+    function poblarAnios() {
+      if (!roeAnio) return;
+      var html = '<option value="">Selecciona un año…</option>';
+      aniosSeleccionables().forEach(function (y) {
+        html += '<option value="' + y + '">' + y + '</option>';
+      });
+      roeAnio.innerHTML = html;
+      poblarTrimestres();
+    }
+
+    // El trimestre depende del año: solo se ofrecen los que ya terminaron.
+    function poblarTrimestres() {
+      if (!roeTrim) return;
+      var trims = trimestresSeleccionables(roeAnio.value);
+      var html = '<option value="">' +
+        (roeAnio.value ? "Selecciona un trimestre…" : "Selecciona primero el año…") + "</option>";
+      trims.forEach(function (t) {
+        html += '<option value="' + t + '" title="' + MESES_TRIM[t] + '">' + TRIM_LABEL[t] + "</option>";
+      });
+      roeTrim.innerHTML = html;
+      roeTrim.disabled = trims.length === 0;
+      roeTrimHint.textContent = ROE_TRIM_HINT_BASE;
+      roeTrim.removeAttribute("title");
+    }
+
+    function roeCompleto() {
+      return !!roeAnio.value
+        && ["1", "2", "3", "4"].indexOf(roeTrim.value) !== -1
+        && !!roeSocInput.value;
+    }
+    function actualizarRoeBtn() { if (btnRoe) btnRoe.disabled = !roeCompleto(); }
+
+    function resetRoe() {
+      if (!formRoe) return;
+      if (roeAnio.options.length) roeAnio.selectedIndex = 0;   // vuelve al placeholder
+      poblarTrimestres();                                      // trimestre: deshabilitado
+      roeSocInput.value = "";
+      roeSocs.querySelectorAll(".soc").forEach(function (x) { x.classList.remove("sel"); });
+      btnRoe.disabled = true;
+    }
+
+    // Decodifica cada XLSX (base64) y dispara su descarga. Devuelve los nombres.
+    function descargarXLSX(archivos) {
+      var nombres = [];
+      archivos.forEach(function (a) {
+        try {
+          var bin = atob(a.contenido_b64 || "");
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          var blob = new Blob([bytes],
+            { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+          var url = URL.createObjectURL(blob);
+          var el = document.createElement("a");
+          el.href = url; el.download = a.nombre || "ROE.xlsx";
+          document.body.appendChild(el); el.click(); el.remove();
+          URL.revokeObjectURL(url);
+          nombres.push(a.nombre || "ROE.xlsx");
+        } catch (e) { /* ignora un archivo corrupto y sigue con el resto */ }
+      });
+      return nombres;
+    }
+
+    function initRoeChile() {
+      if (!formRoe) return;
+      // Cambiar cualquier campo borra el mensaje previo y recalcula si el botón se habilita.
+      roeAnio.addEventListener("change", function () {
+        poblarTrimestres();      // los trimestres válidos dependen del año elegido
+        limpiarBanner(); actualizarRoeBtn();
+      });
+      roeTrim.addEventListener("change", function () {
+        var meses = MESES_TRIM[roeTrim.value];
+        if (meses) {
+          roeTrimHint.textContent = TRIM_LABEL[roeTrim.value] + ": " + meses + ".";
+          roeTrim.title = meses;
+        } else {
+          roeTrimHint.textContent = ROE_TRIM_HINT_BASE;
+          roeTrim.removeAttribute("title");
+        }
+        limpiarBanner(); actualizarRoeBtn();
+      });
+      roeSocs.querySelectorAll(".soc").forEach(function (bt) {
+        bt.addEventListener("click", function () {
+          roeSocs.querySelectorAll(".soc").forEach(function (x) { x.classList.remove("sel"); });
+          bt.classList.add("sel");
+          roeSocInput.value = bt.dataset.soc;
+          limpiarBanner(); actualizarRoeBtn();
+        });
+      });
+
+      formRoe.addEventListener("submit", function (e) {
+        e.preventDefault();
+        if (!roeCompleto()) { actualizarRoeBtn(); return; }
+        limpiarBanner();
+        btnRoe.disabled = true;
+        btnRoe.textContent = "Generando ROE…";
+        api("/generar-roe-chile", { method: "POST", body: new FormData(formRoe) })
+          .then(function (resp) {
+            if (manejar401(resp)) throw new Error("401");
+            return resp.json().catch(function () { return {}; }).then(function (data) {
+              return { ok: resp.ok, data: data };
+            });
+          })
+          .then(function (res) {
+            var d = res.data || {};
+            if (res.ok && d.estado === "OK" && d.archivos && d.archivos.length) {
+              var nombres = descargarXLSX(d.archivos);
+              mostrarBanner("ok", "ROE generado",
+                " Se " + (nombres.length > 1 ? "descargaron los archivos" : "descargó el archivo")
+                + ": " + nombres.join(", ") + ".");
+            } else if (d.estado === "ROE_NEGATIVO") {
+              mostrarBanner("warn", "Corresponde un ROE Negativo",
+                " " + (d.mensaje || ("Para " + (d.sociedad || "la sociedad") + " no se registraron "
+                + "operaciones en efectivo sobre USD 10.000 en el período. Debes declarar un "
+                + "ROE Negativo en la UAF.")));
+            } else if (d.estado === "FALTAN_CARTOLAS") {
+              mostrarBanner("error", "No se puede generar el ROE todavía", " " + (d.mensaje || ""));
+            } else {
+              mostrarBanner("error", "No se pudo generar el ROE", " " + (d.mensaje || "Inténtalo de nuevo."));
+            }
+          })
+          .catch(function (err) {
+            if (String(err && err.message) !== "401")
+              mostrarBanner("error", "Error de comunicación", " No se pudo contactar al servidor: " + err);
+          })
+          .then(function () {
+            btnRoe.textContent = "Generar ROE";
+            actualizarRoeBtn();
+          });
+      });
+    }
+    initRoeChile();
   }
 
   // --------------------------------------------------------------------- //
