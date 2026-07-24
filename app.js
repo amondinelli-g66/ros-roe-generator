@@ -255,11 +255,18 @@
       "1": "Primer Trimestre", "2": "Segundo Trimestre",
       "3": "Tercer Trimestre", "4": "Cuarto Trimestre",
     };
-    // Referencia de fecha del servidor (la entrega /config): año/trimestre actual + año mínimo.
-    var ROE_CFG = { anio_min: 2018, anio_actual: null, trimestre_actual: null };
+    // Referencia de fecha del servidor (la entrega /config): año/trimestre actual +
+    // piso del período (anio_min + trimestre_min, hoy 2.º trimestre de 2026).
+    var ROE_CFG = { anio_min: 2026, trimestre_min: 2, anio_actual: null, trimestre_actual: null };
     var viewPais = $("view-pais"), viewTipo = $("view-tipo"), viewForm = $("view-form");
 
     function limpiarBanner() { banner.className = "banner"; banner.innerHTML = ""; }
+
+    // Escapa texto para insertarlo con seguridad como HTML (listas del banner).
+    function esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
 
     function mostrarVista(v) {
       [viewPais, viewTipo, viewForm].forEach(function (x) { x.hidden = true; });
@@ -441,26 +448,30 @@
     var roeTrimHint = $("roe-trim-hint");
     var ROE_TRIM_HINT_BASE = "Pasa el mouse sobre una opción para ver sus meses.";
 
-    // Años elegibles (del más reciente al más antiguo, >= anio_min). Hasta el año
-    // actual, salvo que hoy sea 1er trimestre (nada cerrado aún) -> hasta año-1.
+    // Años elegibles (del más reciente al más antiguo): los que tienen al menos un
+    // trimestre seleccionable hoy (espejo de core.paises.chile.roe.pipeline).
     function aniosSeleccionables() {
       if (!ROE_CFG.anio_actual) return [];
-      var max = (ROE_CFG.trimestre_actual >= 2) ? ROE_CFG.anio_actual : ROE_CFG.anio_actual - 1;
       var out = [];
-      for (var y = max; y >= ROE_CFG.anio_min; y--) out.push(y);
+      for (var y = ROE_CFG.anio_actual; y >= ROE_CFG.anio_min; y--) {
+        if (trimestresSeleccionables(y).length) out.push(y);
+      }
       return out;
     }
-    // Trimestres del año que YA terminaron (hoy está en uno estrictamente posterior).
+    // Trimestres del año que YA terminaron (hoy en uno estrictamente posterior) y que
+    // no son anteriores al piso (anio_min, trimestre_min).
     function trimestresSeleccionables(anio) {
       anio = parseInt(anio, 10);
-      if (!ROE_CFG.anio_actual || !anio) return [];
-      if (anio < ROE_CFG.anio_actual) return [1, 2, 3, 4];
-      if (anio === ROE_CFG.anio_actual) {
-        var out = [];
-        for (var t = 1; t < ROE_CFG.trimestre_actual; t++) out.push(t);
-        return out;
+      if (!ROE_CFG.anio_actual || !anio || anio < ROE_CFG.anio_min) return [];
+      var tmin = ROE_CFG.trimestre_min || 1;
+      var out = [];
+      for (var t = 1; t <= 4; t++) {
+        if (anio === ROE_CFG.anio_min && t < tmin) continue;   // antes del piso
+        var terminado = (anio < ROE_CFG.anio_actual) ||
+                        (anio === ROE_CFG.anio_actual && t < ROE_CFG.trimestre_actual);
+        if (terminado) out.push(t);
       }
-      return [];
+      return out;
     }
 
     function poblarAnios() {
@@ -569,16 +580,30 @@
             var d = res.data || {};
             if (res.ok && d.estado === "OK" && d.archivos && d.archivos.length) {
               var nombres = descargarXLSX(d.archivos);
+              var aviso = "";
+              if (d.advertencias && d.advertencias.length) {
+                aviso = '<ul class="faltantes">' +
+                  d.advertencias.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+                  "</ul>";
+              }
               mostrarBanner("ok", "ROE generado",
                 " Se " + (nombres.length > 1 ? "descargaron los archivos" : "descargó el archivo")
-                + ": " + nombres.join(", ") + ".");
+                + ": " + esc(nombres.join(", ")) + "." + aviso);
             } else if (d.estado === "ROE_NEGATIVO") {
               mostrarBanner("warn", "Corresponde un ROE Negativo",
-                " " + (d.mensaje || ("Para " + (d.sociedad || "la sociedad") + " no se registraron "
+                " " + esc(d.mensaje || ("Para " + (d.sociedad || "la sociedad") + " no se registraron "
                 + "operaciones en efectivo sobre USD 10.000 en el período. Debes declarar un "
                 + "ROE Negativo en la UAF.")));
             } else if (d.estado === "FALTAN_CARTOLAS") {
-              mostrarBanner("error", "No se puede generar el ROE todavía", " " + (d.mensaje || ""));
+              // Encabezado con sociedad y año + lista de las cartolas faltantes por mes.
+              var lista = "";
+              if (d.faltantes && d.faltantes.length) {
+                lista = '<ul class="faltantes">' +
+                  d.faltantes.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+                  "</ul>";
+              }
+              mostrarBanner("error", "No se puede generar el ROE todavía",
+                " " + esc(d.mensaje || "") + lista);
             } else {
               mostrarBanner("error", "No se pudo generar el ROE", " " + (d.mensaje || "Inténtalo de nuevo."));
             }
