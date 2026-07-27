@@ -590,10 +590,16 @@
                 " Se " + (nombres.length > 1 ? "descargaron los archivos" : "descargó el archivo")
                 + ": " + esc(nombres.join(", ")) + "." + aviso);
             } else if (d.estado === "ROE_NEGATIVO") {
+              var avisoNeg = "";
+              if (d.advertencias && d.advertencias.length) {
+                avisoNeg = '<ul class="faltantes">' +
+                  d.advertencias.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+                  "</ul>";
+              }
               mostrarBanner("warn", "Corresponde un ROE Negativo",
                 " " + esc(d.mensaje || ("Para " + (d.sociedad || "la sociedad") + " no se registraron "
                 + "operaciones en efectivo sobre USD 10.000 en el período. Debes declarar un "
-                + "ROE Negativo en la UAF.")));
+                + "ROE Negativo en la UAF.")) + avisoNeg);
             } else if (d.estado === "FALTAN_CARTOLAS") {
               // Encabezado con sociedad y año + lista de las cartolas faltantes por mes.
               var lista = "";
