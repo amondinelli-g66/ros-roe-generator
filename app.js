@@ -581,9 +581,14 @@
             if (res.ok && d.estado === "OK" && d.archivos && d.archivos.length) {
               var nombres = descargarXLSX(d.archivos);
               var aviso = "";
-              if (d.advertencias && d.advertencias.length) {
+              if (d.no_consultados_bd && d.no_consultados_bd.length) {
                 aviso = '<ul class="faltantes">' +
-                  d.advertencias.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") +
+                  d.no_consultados_bd.map(function (grupo) {
+                    return "<li>" + esc(grupo.mes) + ":<ul>" +
+                      (grupo.operaciones || []).map(function (x) {
+                        return "<li>" + esc(x) + "</li>";
+                      }).join("") + "</ul></li>";
+                  }).join("") +
                   "</ul>";
               }
               mostrarBanner("ok", "ROE generado",
