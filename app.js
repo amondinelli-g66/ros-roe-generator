@@ -44,6 +44,27 @@
   function setToken(t) { try { sessionStorage.setItem(TOKEN_KEY, t || ""); } catch (e) {} }
   function clearToken() { try { sessionStorage.removeItem(TOKEN_KEY); } catch (e) {} }
 
+  // Análisis ROS ya calculado (ros_doc), pendiente de revisar/descargar. Se
+  // guarda por pestaña (mismo mecanismo que el token); "Ver información" lo
+  // vuelve a mostrar sin llamar de nuevo al backend.
+  var ANALISIS_KEY = "g66_ros_analisis";
+  function guardarAnalisis(obj) { try { sessionStorage.setItem(ANALISIS_KEY, JSON.stringify(obj)); } catch (e) {} }
+  function leerAnalisis() {
+    try {
+      var raw = sessionStorage.getItem(ANALISIS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function borrarAnalisis() { try { sessionStorage.removeItem(ANALISIS_KEY); } catch (e) {} }
+
+  function descargarBlob(blob, nombre) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   // fetch a la API: antepone la base del backend y agrega el token si lo hay.
   function api(path, opts) {
     opts = opts || {};
@@ -297,6 +318,11 @@
         $("form-roe-chile").hidden = !esRoeChile;
         $("form-no-disponible").hidden = disponible;   // no-disponible solo si NO hay generador
 
+        // Un análisis guardado corresponde a la combinación país/tipo anterior:
+        // ya no aplica al cambiar de documento.
+        borrarAnalisis();
+        $("btn-ver-analisis").hidden = true;
+
         if (esRosStd) {
           $("pais").value = paisSel;
           $("tipo_documento").value = tipoSel;
@@ -329,6 +355,7 @@
 
     var form = $("form");
     var btn = $("btn");
+    var btnVerAnalisis = $("btn-ver-analisis");
     var btnAddVinc = $("btn-add-vinc"), btnDelVinc = $("btn-del-vinc");
     var vincBox = $("vinc-box"), vincTa = $("vinculados");
     var vincCount = $("vinc-count"), vincMaxEl = $("vinc-max");
@@ -376,8 +403,13 @@
     });
     vincTa.addEventListener("input", actualizarConteoVinc);
     // Al editar cualquier campo del formulario ROS, borra el mensaje de éxito/error
-    // previo (p. ej. tras generar un PDF y luego cambiar un dato).
-    form.addEventListener("input", limpiarBanner);
+    // previo Y el análisis ya calculado (corresponde a otros datos): "Ver
+    // información" desaparece hasta volver a presionar "Iniciar análisis".
+    form.addEventListener("input", function () {
+      limpiarBanner();
+      borrarAnalisis();
+      btnVerAnalisis.hidden = true;
+    });
 
     function mostrarBanner(tipo, titulo, mensaje, reglas) {
       banner.className = "banner show " + tipo;
@@ -398,6 +430,56 @@
       return m ? m[1] : fallback;
     }
 
+    // Abre el modal con un análisis ya calculado (recién llegado del backend o
+    // recuperado de sessionStorage): NO vuelve a consultar la BD ni la IA.
+    function abrirModalConAnalisis(analisis) {
+      var ctx = { pais: analisis.pais, tipoDocumento: analisis.tipo_documento, customerId: analisis.customer_id };
+      window.RosModal.abrir(analisis.ros_doc, ctx, {
+        onChange: function (doc) {
+          analisis.ros_doc = doc;
+          guardarAnalisis(analisis);
+        },
+        onDescargar: function (doc, ctxDescarga) {
+          window.RosModal.setMensaje("Generando PDF…");
+          api("/generar-pdf-editado", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pais: ctxDescarga.pais, tipo_documento: ctxDescarga.tipoDocumento,
+              customer_id: ctxDescarga.customerId, ros_doc: doc,
+            }),
+          })
+            .then(function (resp) {
+              if (manejar401(resp)) throw new Error("401");
+              var ct = resp.headers.get("content-type") || "";
+              if (ct.indexOf("application/pdf") !== -1) {
+                return resp.blob().then(function (blob) {
+                  descargarBlob(blob, nombreArchivo(resp, ctxDescarga.tipoDocumento + "_" + ctxDescarga.customerId + ".pdf"));
+                  window.RosModal.setMensaje("PDF descargado correctamente.");
+                });
+              }
+              return resp.json().then(function (data) {
+                window.RosModal.setMensaje(data.mensaje || "No se pudo generar el PDF.", true);
+              });
+            })
+            .catch(function (err) {
+              if (String(err && err.message) !== "401") {
+                window.RosModal.setMensaje("No se pudo contactar al servidor: " + err, true);
+              }
+            });
+        },
+      });
+    }
+
+    btnVerAnalisis.addEventListener("click", function () {
+      var analisis = leerAnalisis();
+      if (analisis) abrirModalConAnalisis(analisis);
+    });
+
+    // Al cargar la vista, si ya había un análisis guardado (p. ej. se cerró el
+    // modal y no se tocó el formulario), deja "Ver información" visible.
+    if (leerAnalisis()) btnVerAnalisis.hidden = false;
+
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!form.customer_id.value.trim() || !form.fecha_inicio.value.trim()) {
@@ -405,29 +487,30 @@
         return;
       }
       banner.className = "banner";
+      btnVerAnalisis.hidden = true;
+      borrarAnalisis();
       btn.disabled = true;
-      btn.textContent = "Generando… (consultando la base de datos)";
+      btn.textContent = "Analizando… (consultando la base de datos)";
       api("/generar", { method: "POST", body: new FormData(form) })
         .then(function (resp) {
           if (manejar401(resp)) throw new Error("401");
-          var ct = resp.headers.get("content-type") || "";
-          if (ct.indexOf("application/pdf") !== -1) {
-            return resp.blob().then(function (blob) {
-              var url = URL.createObjectURL(blob);
-              var a = document.createElement("a");
-              a.href = url;
-              a.download = nombreArchivo(resp, "ROS_" + form.customer_id.value + ".pdf");
-              document.body.appendChild(a); a.click(); a.remove();
-              URL.revokeObjectURL(url);
-              mostrarBanner("ok", "Documento generado", " El PDF se descargó correctamente.");
-            });
+          return resp.json().then(function (data) { return { ok: resp.ok, data: data }; });
+        })
+        .then(function (res) {
+          var data = res.data;
+          if (res.ok && data.estado === "OK" && data.ros_doc) {
+            guardarAnalisis(data);
+            btnVerAnalisis.hidden = false;
+            mostrarBanner("ok", "Análisis listo",
+              " Revisa y edita la información antes de descargar el PDF. Puedes cerrar esta "
+              + "ventana y volver a abrirla con «Ver información».");
+            abrirModalConAnalisis(data);
+            return;
           }
-          return resp.json().then(function (data) {
-            var esDet = data.es_detencion;
-            mostrarBanner(esDet ? "info" : "error",
-              (esDet ? "Proceso detenido" : "No se pudo generar el documento") + " (" + (data.estado || "") + ")",
-              " " + (data.mensaje || ""), data.reglas);
-          });
+          var esDet = data.es_detencion;
+          mostrarBanner(esDet ? "info" : "error",
+            (esDet ? "Proceso detenido" : "No se pudo generar el documento") + " (" + (data.estado || "") + ")",
+            " " + (data.mensaje || ""), data.reglas);
         })
         .catch(function (err) {
           if (String(err && err.message) !== "401") {
@@ -436,7 +519,7 @@
         })
         .then(function () {
           btn.disabled = false;
-          btn.textContent = "Generar y descargar PDF";
+          btn.textContent = "Iniciar análisis";
         });
     });
 
