@@ -324,16 +324,19 @@
         $("btn-ver-analisis").hidden = true;
 
         if (esRosStd) {
+          // Los datos del cliente/fechas son de OTRO documento (p. ej. se venía de
+          // Colombia y se entra a Chile, o viceversa): siempre se parte en blanco.
+          $("customer_id").value = "";
+          $("fecha_inicio").value = "";
+          $("fecha_fin").value = "";
           $("pais").value = paisSel;
           $("tipo_documento").value = tipoSel;
           // Vinculados solo para documentos que los admiten (no en Colombia).
           var usaVinc = USA_VINC.has(clave);
           $("vinc-zona").hidden = !usaVinc;
-          if (!usaVinc) {   // limpiar por si venía de un documento que sí los usa
-            $("vinculados").value = "";
-            $("vinc-box").hidden = true;
-            $("btn-add-vinc").hidden = false;
-          }
+          $("vinculados").value = "";
+          $("vinc-box").hidden = true;
+          $("btn-add-vinc").hidden = false;
         } else if (esRoeChile) {
           resetRoe();   // deja el formulario ROE limpio al entrar
         } else {
