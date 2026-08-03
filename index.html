@@ -120,6 +120,58 @@
     .reglas .r{ padding:5px 0; border-top:1px solid rgba(0,0,0,.08); }
     .reglas .on{ color:var(--accent); font-weight:600; }
     footer{ margin-top:18px; font-size:11px; color:#8493a3; text-align:center; line-height:1.5; }
+
+    /* ---- Modal: revisión/edición del ROS antes de descargar el PDF ---- */
+    #modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,25,35,.55);
+      backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:1000; }
+    #modal-backdrop.show{ display:block; }
+    #modal-analisis{ display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      z-index:1001; background:#fff; border-radius:10px; width:92%; max-width:920px;
+      max-height:88vh; overflow-y:auto; box-shadow:0 12px 40px rgba(0,0,0,.28); }
+    #modal-analisis.show{ display:block; }
+    .modal-head{ display:flex; justify-content:space-between; align-items:center; gap:12px;
+      padding:16px 22px; border-bottom:1px solid var(--line); position:sticky; top:0;
+      background:#fff; z-index:1; }
+    .modal-head h2{ margin:0; font-size:16px; color:var(--navy); }
+    #modal-cerrar{ width:auto; margin:0; background:none; color:#7a8896; border:0; padding:2px 6px;
+      font-size:16px; cursor:pointer; line-height:1; }
+    #modal-cerrar:hover{ background:#f0f3f7; color:var(--ink); border-radius:4px; }
+    #modal-body{ padding:4px 22px 18px; }
+    .modal-foot{ display:flex; align-items:center; gap:10px; padding:14px 22px;
+      border-top:1px solid var(--line); position:sticky; bottom:0; background:#fff; }
+    .modal-foot button{ width:auto; margin:0; }
+    .modal-foot #modal-msg{ flex:1; font-size:12.5px; color:#5a6b7d; }
+    .modal-foot #modal-msg.err{ color:var(--accent); font-weight:600; }
+    #modal-descargar:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .seccion-titulo{ color:var(--navy); font-size:14px; margin:20px 0 8px; padding-bottom:6px;
+      border-bottom:1px solid var(--line); }
+    .seccion-titulo:first-child{ margin-top:6px; }
+    .grupo-titulo{ font-size:12.5px; font-weight:700; color:var(--navy2); margin:14px 0 2px; }
+    .campos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+    .campos-grid .campo.full{ grid-column:1 / -1; }
+    .campo{ margin-bottom:10px; }
+    .campo label{ margin:8px 0 4px; }
+    .campo .contador{ font-weight:400; text-transform:none; color:#8493a3; float:right; }
+    .campo-err{ color:var(--accent); font-size:11.5px; margin-top:3px; display:none; }
+    .campo.invalid input, .campo.invalid textarea{ border-color:var(--accent); }
+    .campo.invalid .campo-err{ display:block; }
+    .campo-check{ display:flex; align-items:center; gap:8px; margin:8px 0 4px; }
+    .campo-check input{ width:auto; }
+    .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }
+    .aviso-fijo{ font-size:13px; color:#7a8896; background:#f4f7fa; border-radius:6px;
+      padding:10px 12px; margin:10px 0; }
+    .reglas-solo-lectura{ margin-top:6px; }
+    .reglas-solo-lectura details{ font-size:12.5px; }
+    .reglas-solo-lectura summary{ cursor:pointer; color:var(--navy2); font-weight:600; padding:6px 0; }
+    .reglas-solo-lectura .r{ padding:6px 0; border-top:1px solid var(--line); }
+    .reglas-solo-lectura .r.on{ color:var(--ink); }
+    .reglas-solo-lectura .r .estado{ font-weight:700; }
+    .reglas-solo-lectura .r .estado.si{ color:var(--accent); }
+    .reglas-solo-lectura .r .estado.no{ color:#8493a3; }
+    .vinc-titulo{ display:flex; align-items:center; gap:8px; }
+    .vinc-titulo .pill2{ background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy);
+      border-radius:20px; padding:2px 10px; font-size:11px; font-weight:600; }
   </style>
 </head>
 <body>
@@ -234,7 +286,8 @@
               </div>
             </div>
 
-            <button type="submit" id="btn">Generar y descargar PDF</button>
+            <button type="submit" id="btn">Iniciar análisis</button>
+            <button type="button" id="btn-ver-analisis" class="btn-sec" hidden>Ver información</button>
           </form>
         </div>
 
@@ -292,8 +345,24 @@
     </section>
   </div>
 
+  <!-- ===================== Modal: revisión/edición del ROS antes del PDF ===================== -->
+  <div id="modal-backdrop"></div>
+  <div id="modal-analisis" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <div class="modal-head">
+      <h2 id="modal-titulo">Revisa la información del documento</h2>
+      <button type="button" id="modal-cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-foot">
+      <span id="modal-msg"></span>
+      <button type="button" id="modal-cancelar" class="btn-sec">Cerrar</button>
+      <button type="button" id="modal-descargar">Descargar PDF</button>
+    </div>
+  </div>
+
   <!-- Google Identity Services (botón oficial) + JS del cliente (externo). -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./ros-modal.js" defer></script>
   <script src="./app.js" defer></script>
 </body>
 </html>
