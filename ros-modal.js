@@ -24,7 +24,7 @@
   var backdrop = document.getElementById("modal-backdrop");
   var modal = document.getElementById("modal-analisis");
   var body = document.getElementById("modal-body");
-  var titulo = document.getElementById("modal-titulo");
+  var tagsEl = document.getElementById("modal-tags");
   var msgEl = document.getElementById("modal-msg");
   var btnCerrarX = document.getElementById("modal-cerrar");
   var btnCancelar = document.getElementById("modal-cancelar");
@@ -105,6 +105,17 @@
     if (!maxPorLinea) return true;
     var arr = Array.isArray(v) ? v : [];
     return arr.every(function (l) { return String(l).length <= maxPorLinea; });
+  }
+
+  // Avisos que son ruido de implementación (VPN, procedencia de la IA) y no le
+  // sirven al analista para revisar el documento: se ocultan del modal (el
+  // proyecto ya decidió no revelar procedencia de IA en el PDF; esto aplica
+  // el mismo criterio acá).
+  var ADVERTENCIAS_OCULTAS = [/^VPN:/, /^Textos narrativos redactados con IA/];
+  function advertenciasVisibles(lista) {
+    return (lista || []).filter(function (a) {
+      return !ADVERTENCIAS_OCULTAS.some(function (re) { return re.test(a); });
+    });
   }
 
   // ------------------------------------------------------------------- //
@@ -424,47 +435,67 @@
       return;
     }
     lista.forEach(function (v, i) {
+      var card = el("div", { class: "vinc-card" });
       var head = el("div", { class: "vinc-titulo" });
       head.appendChild(el("strong", { text: "Vinculado " + (i + 1) }));
       head.appendChild(el("span", { class: "pill2", text: "ID: " + v.customer_id }));
-      contenedor.appendChild(head);
+      card.appendChild(head);
       if (!v.encontrado) {
-        contenedor.appendChild(el("div", { class: "aviso-fijo",
+        card.appendChild(el("div", { class: "aviso-fijo",
           text: "No se encontró este ID en la base de datos; no se pudo completar su identidad." }));
-        return;
+      } else {
+        renderCampos(card, identidadFieldsChile("vinculados." + i), doc);
       }
-      renderCampos(contenedor, identidadFieldsChile("vinculados." + i), doc);
+      contenedor.appendChild(card);
     });
   }
 
   function renderReglas(contenedor, doc) {
     var reglas = doc.reglas || [];
     var gatilladas = reglas.filter(function (r) { return r.gatillada; }).length;
-    var det = el("details", { class: "reglas-solo-lectura" });
-    det.appendChild(el("summary", { text: "Ver detalle (" + gatilladas + " de " + reglas.length + " gatilladas — informativo, no editable)" }));
+    var card = el("div", { class: "reglas-card" });
+    var det = el("details");
+    var resumen = el("summary", { text: "Ver detalle " });
+    resumen.appendChild(el("span", { class: "reglas-conteo" + (gatilladas ? " hay" : ""),
+      text: gatilladas + " / " + reglas.length + " gatilladas" }));
+    det.appendChild(resumen);
     reglas.forEach(function (r) {
       var linea = el("div", { class: "r" + (r.gatillada ? " on" : "") });
-      linea.appendChild(el("span", { class: "estado " + (r.gatillada ? "si" : "no"), text: r.gatillada ? "● " : "○ " }));
+      linea.appendChild(el("span", { class: "punto " + (r.gatillada ? "si" : "no") }));
       linea.appendChild(document.createTextNode(r.titulo + (r.detalle ? " — " + r.detalle : "")));
       det.appendChild(linea);
     });
-    contenedor.appendChild(det);
+    card.appendChild(det);
+    contenedor.appendChild(card);
   }
 
   // ------------------------------------------------------------------- //
   // Construcción del cuerpo del modal
   // ------------------------------------------------------------------- //
+  // "Paso 1 — Antecedentes..." -> <h3><span class="seccion-badge">Paso 1</span>Antecedentes...</h3>
+  function crearTituloSeccion(texto) {
+    var h3 = el("h3", { class: "seccion-titulo" });
+    var idx = texto.indexOf(" — ");
+    if (idx === -1) {
+      h3.textContent = texto;
+      return h3;
+    }
+    h3.appendChild(el("span", { class: "seccion-badge", text: texto.slice(0, idx) }));
+    h3.appendChild(document.createTextNode(texto.slice(idx + 3)));
+    return h3;
+  }
+
   function construirCuerpo(doc, ctx) {
     body.innerHTML = "";
     _camposRenderizados = [];
     var esquema = ctx.pais === "Colombia" ? schemaColombia(doc) : schemaChile();
 
-    (doc.meta && doc.meta.advertencias && doc.meta.advertencias.length ? doc.meta.advertencias : []).forEach(function (a) {
+    advertenciasVisibles(doc.meta && doc.meta.advertencias).forEach(function (a) {
       body.appendChild(el("div", { class: "aviso-fijo", text: a }));
     });
 
     esquema.forEach(function (seccion) {
-      body.appendChild(el("h3", { class: "seccion-titulo", text: seccion.titulo }));
+      body.appendChild(crearTituloSeccion(seccion.titulo));
       if (seccion.avisoFijo !== undefined) {
         body.appendChild(el("div", { class: "aviso-fijo", text: seccion.avisoFijo }));
       } else if (seccion.vinculados) {
@@ -483,19 +514,29 @@
   // ------------------------------------------------------------------- //
   // Abrir / cerrar
   // ------------------------------------------------------------------- //
+  function bloquearScrollFondo(bloquear) {
+    document.documentElement.style.overflow = bloquear ? "hidden" : "";
+    document.body.style.overflow = bloquear ? "hidden" : "";
+  }
+
   function abrir(doc, ctx, callbacks) {
     _doc = doc; _ctx = ctx; _callbacks = callbacks || {};
-    titulo.textContent = "Revisa la información — " + (ctx.tipoDocumento || "ROS") + " · " + (ctx.pais || "");
+    tagsEl.innerHTML = "";
+    [ctx.tipoDocumento || "ROS", ctx.pais || ""].forEach(function (t) {
+      if (t) tagsEl.appendChild(el("span", { class: "pill2", text: t }));
+    });
     setMensaje("");
     construirCuerpo(doc, ctx);
     backdrop.className = "show";
     modal.className = "show";
+    bloquearScrollFondo(true);
     document.addEventListener("keydown", onEscape);
   }
 
   function cerrar() {
     backdrop.className = "";
     modal.className = "";
+    bloquearScrollFondo(false);
     document.removeEventListener("keydown", onEscape);
   }
 
