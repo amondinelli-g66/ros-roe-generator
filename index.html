@@ -60,6 +60,33 @@
     select:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
     select:disabled{ cursor:not-allowed; background-color:#f7f8fa; color:#a7b2bf; }
     select option{ color:var(--ink); }
+
+    /* ---- Lista desplegable propia (select-ui.js) ----
+       El menú nativo del <select> (la lista de opciones que despliega el SO/navegador)
+       no se puede skinnear de forma consistente entre plataformas, así que se construye
+       una lista propia. El <select> de arriba queda oculto pero sigue siendo el valor
+       real; esto es solo la capa visual encima. */
+    .sel-wrap{ position:relative; display:block; width:100%; }
+    .sel-wrap > select{ position:absolute; inset:0; width:100%; height:100%; opacity:0; pointer-events:none; }
+    .sel-display{ width:100%; padding:13px 40px 13px 14px; border:1px solid var(--line);
+      border-radius:10px; font-size:16px; font-family:inherit; background:#fff; color:var(--ink);
+      cursor:pointer; position:relative; user-select:none; transition:border-color .12s ease, box-shadow .12s ease; }
+    .sel-display:hover{ border-color:var(--orange); }
+    .sel-display:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
+    .sel-wrap.open .sel-display{ border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
+    .sel-display.placeholder .sel-display-text{ color:#98a4b0; }
+    .sel-display.disabled{ background:#f7f8fa; color:#a7b2bf; cursor:not-allowed; }
+    .sel-chevron{ position:absolute; right:15px; top:50%; width:12px; height:8px; color:#7a8896;
+      transform:translateY(-50%); transition:transform .15s ease; pointer-events:none; }
+    .sel-wrap.open .sel-chevron{ transform:translateY(-50%) rotate(180deg); color:var(--orange-dark); }
+    .sel-listbox{ position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:50; margin:0;
+      padding:6px; list-style:none; background:#fff; border:1px solid var(--line); border-radius:12px;
+      box-shadow:0 10px 30px rgba(19,31,68,.16); max-height:240px; overflow-y:auto; }
+    .sel-opt{ padding:10px 12px; border-radius:8px; font-size:15px; color:var(--ink); cursor:pointer; }
+    .sel-opt:hover, .sel-opt.active{ background:var(--orange-light); }
+    .sel-opt.selected{ background:var(--navy); color:#fff; font-weight:600; }
+    .sel-opt.selected.active{ background:var(--navy2); }
+
     .soc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
     .soc{ padding:18px 10px; font-size:16px; }
     .choice.sel{ border-color:var(--orange); background:var(--orange-light);
@@ -507,6 +534,9 @@
 
   <!-- Google Identity Services (botón oficial) + JS del cliente (externo). -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- select-ui.js primero: su observer debe estar activo antes de que app.js/
+       ros-modal.js creen o modifiquen cualquier <select>. -->
+  <script src="./select-ui.js" defer></script>
   <script src="./ros-modal.js" defer></script>
   <script src="./app.js" defer></script>
 </body>
