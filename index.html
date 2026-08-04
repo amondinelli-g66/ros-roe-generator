@@ -14,7 +14,7 @@
     :root{
       /* ---- Paleta Global66 (misma que el ícono GEREO: navy + naranja) ---- */
       --navy:#131F44; --navy2:#0F48C7; --line:#dbe2ee; --bg:#f4f6fa; --ink:#131F44;
-      --orange:#FFAB40; --orange-dark:#9F5900; --orange-light:#FFEED9;
+      --orange:#FFAB40; --orange-dark:#9F5900; --orange-light:#FFEED9; --orange-hover:#F59A1D;
       --accent:#b23a2e;                                    /* rojo — error/crítico (fuera de la paleta de marca, uso funcional) */
       --danger-bg:#fbecea; --danger-text:#7a251c;
       --ok:#00684B; --ok-bg:#eafff8; --ok-border:#8ee9cc;   /* verde — éxito */
@@ -42,14 +42,24 @@
     label{ display:block; font-size:12.5px; font-weight:600; color:var(--navy2);
            text-transform:uppercase; letter-spacing:.3px; margin:16px 0 6px; }
     input[type=text]{ width:100%; padding:13px 14px; border:1px solid var(--line);
-           border-radius:10px; font-size:16px; font-family:inherit; }
-    input[type=text]:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
+           border-radius:10px; font-size:16px; font-family:inherit; transition:border-color .12s ease, box-shadow .12s ease; }
+    input[type=text]:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
+    input[type=checkbox]{ accent-color:var(--orange); }
     textarea{ width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:10px;
-           font-size:15px; font-family:inherit; resize:vertical; }
-    textarea:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
-    select{ width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:10px;
-            font-size:16px; font-family:inherit; background:#fff; color:var(--ink); }
-    select:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
+           font-size:15px; font-family:inherit; resize:vertical; transition:border-color .12s ease, box-shadow .12s ease; }
+    textarea:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
+    /* Select con flecha propia (reemplaza la nativa del navegador) y foco/hover en
+       naranja, para que los desplegables se sientan igual de cuidados que el resto. */
+    select{ width:100%; padding:13px 40px 13px 14px; border:1px solid var(--line); border-radius:10px;
+            font-size:16px; font-family:inherit; background-color:#fff; color:var(--ink); cursor:pointer;
+            appearance:none; -webkit-appearance:none; -moz-appearance:none;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237a8896' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right 15px center; background-size:12px 8px;
+            transition:border-color .12s ease, box-shadow .12s ease; }
+    select:hover{ border-color:var(--orange); }
+    select:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
+    select:disabled{ cursor:not-allowed; background-color:#f7f8fa; color:#a7b2bf; }
+    select option{ color:var(--ink); }
     .soc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
     .soc{ padding:18px 10px; font-size:16px; }
     .choice.sel{ border-color:var(--orange); background:var(--orange-light);
@@ -67,10 +77,12 @@
     .vinc-count.over{ color:var(--accent); }
     .row{ display:flex; gap:14px; }
     .row > div{ flex:1; }
-    button{ width:100%; margin-top:22px; background:var(--navy); color:#fff; border:0;
-            padding:16px; border-radius:999px; font-size:16px; font-weight:600; cursor:pointer;
+    /* Botón primario: naranja (acento de marca) con texto navy — el naranja claro
+       no da suficiente contraste con texto blanco, así que el texto va oscuro. */
+    button{ width:100%; margin-top:22px; background:var(--orange); color:var(--navy); border:0;
+            padding:16px; border-radius:999px; font-size:16px; font-weight:700; cursor:pointer;
             font-family:inherit; transition:background .15s ease; }
-    button:hover{ background:var(--navy2); }
+    button:hover{ background:var(--orange-hover); }
     button:disabled{ opacity:.65; cursor:progress; }
 
     /* ---- Barra superior: marca + cuenta + logout (visible solo autenticado) ---- */
@@ -114,7 +126,8 @@
     .expired-card{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn);
            border-radius:16px; padding:22px 24px; font-size:14px; line-height:1.6; }
     .expired-card strong{ display:block; font-size:16px; margin-bottom:6px; color:var(--warn); }
-    .expired-card button{ background:var(--navy); }
+    .expired-card button{ background:var(--navy); color:#fff; }
+    .expired-card button:hover{ background:var(--navy2); }
 
     /* ---- Texto introductorio: qué es ROS/ROE, sobre el paso a paso ---- */
     .intro-text{ color:#5a6b7d; font-size:14px; line-height:1.55; margin:2px 0 20px; max-width:480px; }
