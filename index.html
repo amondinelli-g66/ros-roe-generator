@@ -7,72 +7,117 @@
        aquí. connect-src incluye el backend en el túnel (Cloudflare, subdominio
        cambiante -> comodín) y Google Identity Services. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://*.trycloudflare.com https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
   <!-- Título neutro hasta iniciar sesión; app.js lo cambia tras autenticar. -->
-  <title>Acceso · Global66</title>
+  <title>Acceso · GEREO</title>
   <style>
-    :root{ --navy:#17324d; --navy2:#21496e; --accent:#b23a2e; --line:#cfd8e3;
-           --bg:#eef2f7; --ok:#1c7a4d; --warn:#b26a00; --ink:#16202b; }
+    :root{
+      /* ---- Paleta Global66 (misma que el ícono GEREO: navy + naranja) ---- */
+      --navy:#131F44; --navy2:#0F48C7; --line:#dbe2ee; --bg:#f4f6fa; --ink:#131F44;
+      --orange:#FFAB40; --orange-dark:#9F5900; --orange-light:#FFEED9;
+      --accent:#b23a2e;                                    /* rojo — error/crítico (fuera de la paleta de marca, uso funcional) */
+      --danger-bg:#fbecea; --danger-text:#7a251c;
+      --ok:#00684B; --ok-bg:#eafff8; --ok-border:#8ee9cc;   /* verde — éxito */
+      --warn:#958209; --warn-bg:#fdf8da; --warn-border:#f4dd48; /* amarillo — advertencia */
+      --info:#095eae; --info-bg:#e4f1fe; --info-border:#a9d3fb;  /* celeste — informativo/neutro */
+    }
     *{ box-sizing:border-box; }
-    body{ font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink);
-          margin:0; padding:24px; display:flex; justify-content:center; min-height:100vh; }
+    body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+          background:var(--bg); color:var(--ink); margin:0; padding:24px;
+          display:flex; justify-content:center; min-height:100vh; }
     .wrap{ width:100%; max-width:560px; }
-    header h1{ color:var(--navy); font-size:22px; margin:0 0 2px; }
-    header p{ color:#5a6b7d; font-size:13px; margin:0 0 18px; }
-    .card{ background:#fff; border:1px solid var(--line); border-radius:8px;
-           box-shadow:0 2px 10px rgba(23,50,77,.06); padding:22px 24px; }
+
+    /* ---- Marca GEREO (ícono + wordmark), reutilizada en topbar/login/header ---- */
+    .brand-icon{ display:block; flex:none; border-radius:8px; }
+    .brand-lockup{ display:flex; align-items:center; gap:10px; }
+    .brand-word{ font-weight:800; letter-spacing:.4px; color:var(--navy); line-height:1; }
+
+    header{ margin:4px 0 22px; }
+    header h1.brand-lockup{ margin:0 0 6px; }
+    header h1.brand-lockup .brand-icon{ width:34px; height:34px; }
+    header h1.brand-lockup .brand-word{ font-size:26px; }
+    header p{ color:#5a6b7d; font-size:13px; margin:0; line-height:1.5; max-width:440px; }
+
+    .card{ background:#fff; border:1px solid var(--line); border-radius:16px;
+           box-shadow:0 4px 24px rgba(19,31,68,.08); padding:26px 28px; }
     label{ display:block; font-size:12px; font-weight:600; color:var(--navy2);
            text-transform:uppercase; letter-spacing:.3px; margin:14px 0 5px; }
     input[type=text]{ width:100%; padding:10px 12px; border:1px solid var(--line);
-           border-radius:6px; font-size:15px; }
-    input[type=text]:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(33,73,110,.12); }
-    textarea{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:6px;
+           border-radius:10px; font-size:15px; font-family:inherit; }
+    input[type=text]:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
+    textarea{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
            font-size:14px; font-family:inherit; resize:vertical; }
-    textarea:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(33,73,110,.12); }
-    select{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:6px;
-            font-size:15px; background:#fff; color:var(--ink); }
-    select:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(33,73,110,.12); }
+    textarea:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
+    select{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+            font-size:15px; font-family:inherit; background:#fff; color:var(--ink); }
+    select:focus{ outline:none; border-color:var(--navy2); box-shadow:0 0 0 3px rgba(15,72,199,.14); }
     .soc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
     .soc{ padding:16px 10px; font-size:15px; }
-    .choice.sel{ border-color:var(--navy2); background:#eaf1fb; box-shadow:0 0 0 3px rgba(33,73,110,.12); }
+    .choice.sel{ border-color:var(--orange); background:var(--orange-light);
+           box-shadow:0 0 0 3px rgba(255,171,64,.28); }
     .hint{ font-size:11.5px; color:#7a8896; margin-top:4px; }
     #vinc-zona{ margin-top:16px; }
     .btn-sec{ width:auto; margin-top:0; background:#eef3f9; color:var(--navy2); border:1px solid var(--line);
-           padding:9px 14px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; }
+           padding:10px 18px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer;
+           font-family:inherit; }
     .btn-sec:hover{ background:#e2ebf5; }
     .btn-link{ width:auto; margin-top:8px; background:none; color:var(--accent); border:0; padding:0;
-           font-size:12.5px; font-weight:600; cursor:pointer; }
+           font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit; }
     .btn-link:hover{ text-decoration:underline; background:none; }
     .vinc-count{ font-weight:600; color:var(--navy2); }
     .vinc-count.over{ color:var(--accent); }
     .row{ display:flex; gap:14px; }
     .row > div{ flex:1; }
     button{ width:100%; margin-top:20px; background:var(--navy); color:#fff; border:0;
-            padding:13px; border-radius:6px; font-size:15px; font-weight:600; cursor:pointer; }
+            padding:14px; border-radius:999px; font-size:15px; font-weight:600; cursor:pointer;
+            font-family:inherit; transition:background .15s ease; }
     button:hover{ background:var(--navy2); }
     button:disabled{ opacity:.65; cursor:progress; }
 
-    /* ---- Logo en la esquina superior (visible solo autenticado) ---- */
-    .topbar{ position:fixed; top:14px; left:18px; z-index:10; }
-    .topbar img{ height:30px; width:auto; display:block; }
+    /* ---- Marca en la esquina superior (visible solo autenticado) ---- */
+    .topbar{ position:fixed; top:16px; left:20px; z-index:10; }
+    .topbar .brand-icon{ width:26px; height:26px; }
+    .topbar .brand-word{ font-size:16px; }
 
     /* ---- Login ---- */
     #view-login{ display:flex; justify-content:center; align-items:flex-start; padding-top:6vh; }
-    .login-card{ background:#fff; border:1px solid var(--line); border-radius:12px;
-           box-shadow:0 6px 24px rgba(23,50,77,.10); padding:34px 30px; width:100%; max-width:380px;
+    .login-card{ background:#fff; border:1px solid var(--line); border-radius:20px;
+           box-shadow:0 6px 28px rgba(19,31,68,.10); padding:36px 32px; width:100%; max-width:380px;
            text-align:center; }
-    .login-logo{ height:34px; width:auto; margin-bottom:18px; }
-    .login-title{ color:var(--navy); font-size:20px; margin:0 0 6px; }
+    .login-brand{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:8px; }
+    .login-brand .brand-icon{ width:44px; height:44px; }
+    .login-brand .brand-word{ font-size:24px; }
+    .login-tagline{ color:#7a8896; font-size:12.5px; line-height:1.5; margin:0 0 22px; }
+    .login-divider{ border:0; border-top:1px solid var(--line); margin:0 0 22px; }
+    .login-title{ color:var(--navy); font-size:17px; margin:0 0 6px; font-weight:700; }
     .login-sub{ color:#6b7a8d; font-size:13px; margin:0 0 22px; line-height:1.5; }
     .g-btn{ display:flex; justify-content:center; min-height:44px; }
-    .login-msg{ margin-top:18px; font-size:12.5px; color:#7a251c; background:#fbecea;
-           border:1px solid var(--accent); border-radius:6px; padding:10px 12px; line-height:1.5; text-align:left; }
+    .login-msg{ margin-top:18px; font-size:12.5px; color:var(--danger-text); background:var(--danger-bg);
+           border:1px solid var(--accent); border-radius:10px; padding:10px 12px; line-height:1.5; text-align:left; }
     .login-foot{ margin-top:20px; font-size:11px; color:#9aa7b4; line-height:1.5; }
 
     /* ---- Sesión expirada ---- */
-    .expired-card{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; border-radius:10px;
-           padding:22px 24px; font-size:14px; line-height:1.6; }
-    .expired-card strong{ display:block; font-size:16px; margin-bottom:6px; color:#7a4a05; }
+    .expired-card{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn);
+           border-radius:16px; padding:22px 24px; font-size:14px; line-height:1.6; }
+    .expired-card strong{ display:block; font-size:16px; margin-bottom:6px; color:var(--warn); }
     .expired-card button{ background:var(--navy); }
+
+    /* ---- Paso a paso (país → documento → datos) ---- */
+    .stepper{ display:flex; align-items:center; margin:0 0 22px; user-select:none; }
+    .step{ display:flex; align-items:center; gap:9px; color:#9aa7b4; }
+    .step-num{ display:flex; align-items:center; justify-content:center; flex:none;
+           width:26px; height:26px; border-radius:50%; background:#e7ebf1; color:#8493a3;
+           font-size:12px; font-weight:700; transition:background .15s ease, color .15s ease; }
+    .step-label{ font-size:12.5px; font-weight:600; white-space:nowrap; }
+    .step.active .step-num{ background:var(--orange); color:var(--navy); }
+    .step.active .step-label{ color:var(--navy); }
+    .step.done{ cursor:pointer; }
+    .step.done .step-num{ background:var(--navy); color:#fff; }
+    .step.done .step-label{ color:var(--navy2); }
+    .step.done:hover .step-label{ text-decoration:underline; }
+    .step-line{ flex:1 1 auto; min-width:16px; max-width:56px; height:2px; background:#e7ebf1;
+           margin:0 10px; border-radius:2px; }
+    .step-line.done{ background:var(--navy); }
 
     /* ---- Asistente (país / tipo de documento) ---- */
     .paso-titulo{ color:var(--navy); font-size:16px; margin:0 0 14px; }
@@ -80,31 +125,25 @@
     .choice-grid.paises{ grid-template-columns:1fr 1fr 1fr; }
     .choice-grid.tipos{ grid-template-columns:1fr 1fr; }
     .choice{ width:100%; margin-top:0; background:#fff; color:var(--navy); border:2px solid var(--line);
-             border-radius:10px; padding:22px 10px; font-size:16px; font-weight:700; cursor:pointer;
-             transition:border-color .12s, background .12s, box-shadow .12s; }
-    .choice:hover{ background:#f3f7fc; border-color:var(--navy2); box-shadow:0 3px 10px rgba(23,50,77,.10); }
+             border-radius:14px; padding:22px 10px; font-size:16px; font-weight:700; cursor:pointer;
+             font-family:inherit; transition:border-color .12s, background .12s, box-shadow .12s; }
+    .choice:hover{ background:#f6f8fc; border-color:var(--orange); box-shadow:0 3px 10px rgba(19,31,68,.10); }
     .choice .sub{ display:block; font-size:11px; font-weight:500; color:#7a8896; margin-top:5px;
                   text-transform:none; letter-spacing:0; }
-    .ctx{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; color:#5a6b7d; }
-    .ctx .pill2{ background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy); border-radius:20px;
-                 padding:4px 12px; font-weight:600; }
-    .back{ width:auto; margin:0 0 12px; background:none; color:var(--navy2); border:0; padding:4px 0;
-           font-size:13px; font-weight:600; cursor:pointer; }
-    .back:hover{ text-decoration:underline; background:none; }
-    .no-disp{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; border-radius:8px;
-              padding:20px 22px; font-size:14px; line-height:1.6; }
-    .no-disp strong{ display:block; font-size:15px; margin-bottom:6px; }
+    .no-disp{ background:var(--info-bg); border:1px solid var(--info-border); color:var(--info);
+              border-radius:14px; padding:20px 22px; font-size:14px; line-height:1.6; }
+    .no-disp strong{ display:block; font-size:15px; margin-bottom:6px; color:var(--navy); }
     .no-disp p{ margin:6px 0 0; }
     [hidden]{ display:none !important; }
 
-    .banner{ padding:12px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; line-height:1.5; display:none; }
+    .banner{ padding:13px 16px; border-radius:12px; font-size:13px; margin-bottom:16px; line-height:1.5; display:none; }
     .banner.show{ display:block; }
-    .banner.info{ background:#fff6e6; border:1px solid #e5c987; color:#7a5a10; }
-    .banner.error{ background:#fbecea; border:1px solid var(--accent); color:#7a251c; }
-    .banner.ok{ background:#e8f4ee; border:1px solid #9ccbb4; color:#155f3c; }
+    .banner.info{ background:var(--info-bg); border:1px solid var(--info-border); color:var(--info); }
+    .banner.error{ background:var(--danger-bg); border:1px solid var(--accent); color:var(--danger-text); }
+    .banner.ok{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok); }
     /* Amarillo (ROE Negativo): sin cartolas faltantes pero sin operaciones sobre el umbral. */
-    .banner.warn{ background:#fdf3c7; border:1px solid #e0b400; color:#6b5300; }
-    .banner strong{ display:block; margin-bottom:2px; }
+    .banner.warn{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn); }
+    .banner strong{ display:block; margin-bottom:2px; color:var(--navy); }
     /* Lista de cartolas faltantes / advertencias dentro del banner. */
     .banner ul.faltantes{ margin:8px 0 0; padding-left:20px; }
     .banner ul.faltantes li{ margin:2px 0; }
@@ -114,12 +153,13 @@
     .userbar{ display:flex; justify-content:flex-end; align-items:center; gap:10px; font-size:12px;
               color:#5a6b7d; margin-bottom:6px; }
     .userbar button{ width:auto; margin:0; background:none; color:var(--navy2); border:0; padding:0;
-              font-size:12px; font-weight:600; cursor:pointer; }
+              font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
     .userbar button:hover{ text-decoration:underline; }
     .reglas{ margin-top:10px; font-size:12px; }
     .reglas .r{ padding:5px 0; border-top:1px solid rgba(0,0,0,.08); }
     .reglas .on{ color:var(--accent); font-weight:600; }
-    footer{ margin-top:18px; font-size:11px; color:#8493a3; text-align:center; line-height:1.5; }
+    footer{ margin-top:22px; font-size:11px; color:#8493a3; text-align:center; line-height:1.6; }
+    footer .footer-brand{ display:block; margin-bottom:4px; color:#7a8896; font-weight:600; }
 
     /* ---- Botones de acción del formulario ROS (Iniciar análisis / Ver información) ---- */
     .acciones-form{ display:flex; gap:10px; margin-top:20px; }
@@ -133,27 +173,32 @@
       backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:1000; }
     #modal-backdrop.show{ display:block; animation:fondoAparece .18s ease-out; }
     #modal-analisis{ display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      z-index:1001; background:#fff; border-radius:14px; width:92%; max-width:940px;
+      z-index:1001; background:#fff; border-radius:16px; width:92%; max-width:940px;
       max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(10,20,35,.35); }
     #modal-analisis.show{ display:block; animation:modalAparece .2s cubic-bezier(.2,.8,.3,1); }
     .modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
       padding:20px 26px; border-bottom:1px solid var(--line); position:sticky; top:0;
-      background:linear-gradient(180deg,#f5f8fb,#ffffff); z-index:1; border-radius:14px 14px 0 0; }
+      background:linear-gradient(180deg,#f5f8fb,#ffffff); z-index:1; border-radius:16px 16px 0 0; }
     .modal-head h2{ margin:0 0 8px; font-size:18px; font-weight:700; color:var(--navy); letter-spacing:.1px; }
     .modal-head-tags{ display:flex; gap:6px; flex-wrap:wrap; }
-    .modal-head-tags .pill2{ background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy);
-      border-radius:20px; padding:2px 11px; font-size:11px; font-weight:700; letter-spacing:.2px; }
+    .modal-head-tags .pill2{ margin:0; }
     #modal-cerrar{ width:auto; margin:0; background:#fff; color:#7a8896; border:1px solid var(--line);
-      padding:5px 10px; border-radius:8px; font-size:15px; cursor:pointer; line-height:1.4; flex:none; }
+      padding:5px 10px; border-radius:8px; font-size:15px; cursor:pointer; line-height:1.4; flex:none;
+      font-family:inherit; }
     #modal-cerrar:hover{ background:#f0f3f7; color:var(--accent); border-color:#e0c3bd; }
     #modal-body{ padding:6px 26px 20px; }
     .modal-foot{ display:flex; align-items:center; gap:12px; padding:16px 26px;
       border-top:1px solid var(--line); position:sticky; bottom:0; background:#fff;
-      border-radius:0 0 14px 14px; }
-    .modal-foot button{ width:auto; margin:0; padding:11px 22px; }
+      border-radius:0 0 16px 16px; }
+    .modal-foot button{ width:auto; margin:0; padding:11px 24px; }
     .modal-foot #modal-msg{ flex:1; font-size:12.5px; color:#5a6b7d; }
     .modal-foot #modal-msg.err{ color:var(--accent); font-weight:600; }
     #modal-descargar:disabled{ opacity:.55; cursor:not-allowed; }
+
+    /* Pill genérica: contexto en el modal (país/documento/cliente) y en el bloque de vinculados. */
+    .pill2{ display:inline-flex; background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy);
+      border-radius:20px; padding:2px 12px; font-size:11px; font-weight:700; letter-spacing:.2px;
+      white-space:nowrap; }
 
     .seccion-titulo{ display:flex; align-items:center; color:var(--navy); font-size:14.5px;
       font-weight:700; margin:26px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--line); }
@@ -176,7 +221,7 @@
     .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }
     .aviso-fijo{ font-size:13px; color:#516070; background:#f4f7fa; border-radius:0 6px 6px 0;
       border-left:3px solid var(--navy2); padding:10px 14px; margin:10px 0; line-height:1.5; }
-    .reglas-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:10px;
+    .reglas-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:12px;
       padding:2px 18px; margin:10px 0 4px; }
     .reglas-card details{ font-size:12.5px; }
     .reglas-card summary{ cursor:pointer; color:var(--navy2); font-weight:700; padding:11px 0;
@@ -186,7 +231,7 @@
     .reglas-card details[open] summary::before{ transform:rotate(90deg); }
     .reglas-conteo{ background:#eef1f5; color:#5a6b7d; font-weight:700; font-size:11px;
       padding:2px 9px; border-radius:20px; }
-    .reglas-conteo.hay{ background:#fbecea; color:var(--accent); }
+    .reglas-conteo.hay{ background:var(--danger-bg); color:var(--accent); }
     .reglas-card .r{ padding:8px 0; border-top:1px solid var(--line); display:flex; align-items:flex-start; gap:2px; }
     .reglas-card .r.on{ color:var(--ink); }
     .reglas-card .r:not(.on){ color:#7a8896; }
@@ -194,33 +239,37 @@
       margin:5px 8px 0 0; }
     .punto.si{ background:var(--accent); }
     .punto.no{ background:#c2ccd6; }
-    .vinc-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:10px;
+    .vinc-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:12px;
       padding:2px 18px 8px; margin:14px 0 20px; }
     .vinc-titulo{ display:flex; align-items:center; gap:10px; padding:14px 0 4px; }
     .vinc-titulo strong{ color:var(--navy); font-size:13.5px; }
-    .vinc-titulo .pill2{ background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy);
-      border-radius:20px; padding:2px 10px; font-size:11px; font-weight:600; }
 
     /* ---- Bloques repetibles (p. ej. señales de alerta), uno por bloque como en el PDF ---- */
     .bloques-lista{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
-    .bloque-alerta{ background:#fbfcfe; border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+    .bloque-alerta{ background:#fbfcfe; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
     .bloque-alerta textarea{ margin-bottom:6px; }
     .bloque-alerta.invalid textarea{ border-color:var(--accent); background:#fef8f7; }
     .bloque-pie{ display:flex; justify-content:space-between; align-items:center; }
     .bloque-contador{ font-size:11px; color:#8493a3; }
     .btn-bloque-quitar{ width:auto; margin:0; background:none; color:var(--accent); border:0;
-      padding:2px 4px; font-size:12px; font-weight:600; cursor:pointer; }
+      padding:2px 4px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
     .btn-bloque-quitar:hover{ text-decoration:underline; background:none; }
     .btn-bloque-agregar{ width:auto; margin-top:10px; background:#eef3f9; color:var(--navy2);
-      border:1px solid var(--line); padding:8px 14px; border-radius:6px; font-size:13px;
-      font-weight:600; cursor:pointer; }
+      border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px;
+      font-weight:600; cursor:pointer; font-family:inherit; }
     .btn-bloque-agregar:hover{ background:#e2ebf5; }
   </style>
 </head>
 <body>
-  <!-- Logo en la esquina superior: visible en todo momento MENOS al iniciar sesión. -->
-  <div id="topbar" class="topbar" hidden>
-    <img src="./global66-cs-logo.webp" alt="Global66">
+  <!-- Marca GEREO en la esquina superior: visible en todo momento MENOS al iniciar sesión. -->
+  <div id="topbar" class="topbar brand-lockup" hidden>
+    <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#131F44"/>
+      <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
+      <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
+      <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
+    </svg>
+    <span class="brand-word">GEREO</span>
   </div>
 
   <div class="wrap">
@@ -228,7 +277,17 @@
     <!-- Lo PRIMERO que se ve. No revela nada del proyecto hasta autenticar. -->
     <section id="view-login" class="view">
       <div class="login-card">
-        <img class="login-logo" src="./global66-cs-logo.webp" alt="Global66">
+        <div class="login-brand">
+          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#131F44"/>
+            <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
+            <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
+            <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
+          </svg>
+          <span class="brand-word">GEREO</span>
+        </div>
+        <p class="login-tagline">Generador de Reportes de Operaciones Sospechosas y en Efectivo</p>
+        <hr class="login-divider">
         <h2 class="login-title">Iniciar sesión</h2>
         <p class="login-sub">Usa tu cuenta de Google de empresa <b>@global66.com</b></p>
         <div id="g-btn" class="g-btn"></div>
@@ -245,9 +304,26 @@
       </div>
 
       <header>
-        <h1>Generador de ROS y ROE</h1>
-        <p>Reporte de Operaciones Sospechosas (ROS) y Reporte de Operaciones en Efectivo (ROE)</p>
+        <h1 class="brand-lockup">
+          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#131F44"/>
+            <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
+            <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
+            <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
+          </svg>
+          <span class="brand-word">GEREO</span>
+        </h1>
+        <p>Generador de Reporte de Operaciones Sospechosas (ROS) y en Efectivo (ROE).</p>
       </header>
+
+      <!-- Paso a paso: siempre visible, resume la selección y permite volver a un paso ya completado. -->
+      <div class="stepper" id="stepper">
+        <div class="step" data-step="pais"><span class="step-num">1</span><span class="step-label">País</span></div>
+        <div class="step-line" data-line="0"></div>
+        <div class="step" data-step="tipo"><span class="step-num">2</span><span class="step-label">Documento</span></div>
+        <div class="step-line" data-line="1"></div>
+        <div class="step" data-step="form"><span class="step-num">3</span><span class="step-label">Datos</span></div>
+      </div>
 
       <div id="banner" class="banner"></div>
 
@@ -265,8 +341,6 @@
 
       <!-- VISTA 2: Tipo de documento -->
       <section id="view-tipo" class="view" hidden>
-        <button type="button" class="back" data-target="pais">← Cambiar país</button>
-        <div class="ctx"><span>País:</span> <span class="pill2" id="ctx-pais-tipo"></span></div>
         <div class="card">
           <h2 class="paso-titulo">¿Qué documento quieres generar?</h2>
           <div class="choice-grid tipos">
@@ -280,12 +354,6 @@
 
       <!-- VISTA 3: Formulario / No disponible -->
       <section id="view-form" class="view" hidden>
-        <button type="button" class="back" data-target="tipo">← Volver</button>
-        <div class="ctx">
-          <span>País:</span> <span class="pill2" id="ctx-pais-form"></span>
-          <span>Documento:</span> <span class="pill2" id="ctx-tipo-form"></span>
-        </div>
-
         <!-- Disponible SOLO para combinaciones registradas (la fuente de verdad es
              el backend: /config -> core.documentos). -->
         <div id="form-disponible" class="card" hidden>
@@ -367,12 +435,13 @@
             <strong>Servicio aún no disponible</strong>
             <p>La generación de <b id="no-disp-doc"></b> para <b id="no-disp-pais"></b> todavía
                no está habilitada en esta versión.</p>
-            <p>Usa «<b>← Volver</b>» para elegir otra combinación.</p>
+            <p>Usa el paso «<b>Documento</b>» de arriba para elegir otra combinación.</p>
           </div>
         </div>
       </section>
 
       <footer>
+        <span class="footer-brand">GEREO · Equipo de Cumplimiento, Global66</span>
         El PDF generado es un <strong>BORRADOR</strong> de apoyo. La validación y el envío al
         portal oficial correspondiente son responsabilidad del analista de cumplimiento.
       </footer>
@@ -380,7 +449,17 @@
 
     <!-- ===================== VISTA: Sesión expirada ===================== -->
     <section id="view-expired" class="view" hidden>
-      <header><h1>Generador de ROS y ROE</h1></header>
+      <header>
+        <h1 class="brand-lockup">
+          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#131F44"/>
+            <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
+            <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
+            <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
+          </svg>
+          <span class="brand-word">GEREO</span>
+        </h1>
+      </header>
       <div class="expired-card">
         <strong>Tu sesión se cerró por inactividad</strong>
         <p>Por seguridad, cerramos la sesión tras 10 minutos sin actividad.

@@ -141,7 +141,7 @@
   // --------------------------------------------------------------------- //
   function prepararLogin(st) {
     soloVista("login");
-    document.title = "Acceso · Global66";
+    document.title = "Acceso · GEREO";
     if (st.auth_enabled === false) { entrarApp({ email: "dev@local" }); return; }
     if (!st.ready) {
       mostrarLoginMsg("La autenticación aún no está configurada en el servidor " +
@@ -201,7 +201,7 @@
   // Entrar a la app (autenticado)
   // --------------------------------------------------------------------- //
   function entrarApp(user) {
-    document.title = "Generador de ROS y ROE";
+    document.title = "GEREO · Generador de ROS y ROE";
     var em = $("user-email");
     if (em) em.textContent = user && user.email ? user.email : "";
     soloVista("app");
@@ -281,6 +281,56 @@
     var ROE_CFG = { anio_min: 2026, trimestre_min: 2, anio_actual: null, trimestre_actual: null };
     var viewPais = $("view-pais"), viewTipo = $("view-tipo"), viewForm = $("view-form");
 
+    // ------------------------------------------------------------------- //
+    // Paso a paso (país → documento → datos): resume la selección hecha en
+    // cada paso y permite volver a uno ya completado con un clic (los pasos
+    // futuros no son clicables).
+    // ------------------------------------------------------------------- //
+    var STEP_ORDER = ["pais", "tipo", "form"];
+    var STEP_LABELS_BASE = { pais: "País", tipo: "Documento", form: "Datos" };
+    var stepEls = {
+      pais: document.querySelector('.step[data-step="pais"]'),
+      tipo: document.querySelector('.step[data-step="tipo"]'),
+      form: document.querySelector('.step[data-step="form"]'),
+    };
+    var stepLineEls = [
+      document.querySelector('.step-line[data-line="0"]'),
+      document.querySelector('.step-line[data-line="1"]'),
+    ];
+
+    function actualizarStepper(actual) {
+      var idxActual = STEP_ORDER.indexOf(actual);
+      STEP_ORDER.forEach(function (key, i) {
+        var el = stepEls[key];
+        if (!el) return;
+        el.classList.remove("done", "active", "todo");
+        var etiqueta = el.querySelector(".step-label");
+        if (i < idxActual) {
+          el.classList.add("done");
+          etiqueta.textContent = (key === "pais" ? paisSel : key === "tipo" ? tipoSel : null) || STEP_LABELS_BASE[key];
+        } else if (i === idxActual) {
+          el.classList.add("active");
+          etiqueta.textContent = STEP_LABELS_BASE[key];
+        } else {
+          el.classList.add("todo");
+          etiqueta.textContent = STEP_LABELS_BASE[key];
+        }
+      });
+      stepLineEls.forEach(function (line, i) { if (line) line.classList.toggle("done", i < idxActual); });
+    }
+    actualizarStepper("pais");   // estado inicial: paso 1 activo, 2 y 3 pendientes
+
+    Object.keys(stepEls).forEach(function (key) {
+      var el = stepEls[key];
+      if (!el) return;
+      el.addEventListener("click", function () {
+        if (!el.classList.contains("done")) return;
+        banner.className = "banner";
+        if (key === "pais") { paisSel = null; tipoSel = null; mostrarVista(viewPais); actualizarStepper("pais"); }
+        else if (key === "tipo") { tipoSel = null; mostrarVista(viewTipo); actualizarStepper("tipo"); }
+      });
+    });
+
     function limpiarBanner() { banner.className = "banner"; banner.innerHTML = ""; }
 
     // Escapa texto para insertarlo con seguridad como HTML (listas del banner).
@@ -298,16 +348,14 @@
     document.querySelectorAll("[data-pais]").forEach(function (b) {
       b.addEventListener("click", function () {
         paisSel = b.dataset.pais; tipoSel = null;
-        $("ctx-pais-tipo").textContent = paisSel;
         mostrarVista(viewTipo);
+        actualizarStepper("tipo");
       });
     });
 
     document.querySelectorAll("[data-tipo]").forEach(function (b) {
       b.addEventListener("click", function () {
         tipoSel = b.dataset.tipo;
-        $("ctx-pais-form").textContent = paisSel;
-        $("ctx-tipo-form").textContent = tipoSel;
         var clave = paisSel + "|" + tipoSel;
         var disponible = DISPONIBLES.has(clave);
         var formulario = FORMULARIOS[clave] || "ros";
@@ -345,14 +393,7 @@
         }
         limpiarBanner();
         mostrarVista(viewForm);
-      });
-    });
-
-    document.querySelectorAll(".back").forEach(function (b) {
-      b.addEventListener("click", function () {
-        banner.className = "banner";
-        if (b.dataset.target === "pais") { paisSel = null; tipoSel = null; mostrarVista(viewPais); }
-        else if (b.dataset.target === "tipo") { tipoSel = null; mostrarVista(viewTipo); }
+        actualizarStepper("form");
       });
     });
 
