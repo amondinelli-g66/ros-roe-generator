@@ -232,6 +232,24 @@
   // ------------------------------------------------------------------- //
   // Esquema — Colombia · ROS (espejo de fields.py y ros_colombia_template.html)
   // ------------------------------------------------------------------- //
+  // Listas taxativas de la UIAF (espejo de core/paises/colombia/enums.py).
+  var TIPO_ID_NATURAL = [
+    "Cédula de ciudadanía", "Pasaporte", "Tarjeta de identidad",
+    "Registro civil de nacimiento", "Tarjeta de extranjería",
+    "Cédula de extranjería", "Documento de identidad extranjero",
+  ];
+  var TEMATICAS = [
+    "Concierto para delinquir", "Contrabando", "Contrabando hidrocarburos",
+    "Corrupción", "Delitos contra el sistema financiero",
+    "Delitos contra la administración pública", "Enriquecimiento ilícito",
+    "Exportaciones ficticias", "Extorsión", "Financiamiento del terrorismo",
+    "Fraude aduanero", "Importaciones ficticias", "Minería ilegal",
+    "Operaciones con activos virtuales", "Secuestro extorsivo",
+    "Tráfico de emigrantes", "Tráfico de estupefacientes", "Tráfico de menores",
+    "Tráfico de personas",
+  ];
+  var MONEDAS = ["pesos", "dólar", "euro", "libra", "bolívar", "bolívar fuerte", "otro tipo"];
+
   function schemaColombia(doc) {
     var secciones = [
       {
@@ -270,7 +288,7 @@
       secciones.push({
         titulo: "3 — Persona natural",
         campos: [
-          { path: "persona_natural.tipo_identificacion", label: "Tipo identificación", type: "text" },
+          { path: "persona_natural.tipo_identificacion", label: "Tipo identificación", type: "select", options: TIPO_ID_NATURAL },
           { path: "persona_natural.identificacion", label: "Identificación", type: "text" },
           { path: "persona_natural.nombres", label: "Nombres", type: "text", full: true },
           { path: "persona_natural.primer_apellido", label: "Primer apellido", type: "text" },
@@ -292,12 +310,12 @@
         { path: "detalle.periodo_hasta", label: "Hasta (DD-MM-AAAA)", type: "text",
           validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
         { path: "detalle.descripcion", label: "Descripción de la operación sospechosa", type: "textarea", full: true },
-        { path: "detalle.tematica", label: "Temática (delito fuente)", type: "text" },
-        { path: "detalle.senales_alerta", label: "Señales de alerta (una por línea, máx. 200 caracteres cada una)", type: "list", full: true,
-          validate: function (v) { return validarLista(v, 200); }, errMsg: "Cada línea debe tener 200 caracteres o menos." },
+        { path: "detalle.tematica", label: "Temática (delito fuente)", type: "select", full: true, options: TEMATICAS },
+        { path: "detalle.senales_alerta", label: "Señales de alerta (máx. 200 caracteres cada una)", type: "bloques", full: true,
+          maxPorBloque: 200 },
         { path: "detalle.valor_transaccion", label: "Valor de la transacción (sin puntos ni comas)", type: "text",
           validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos, sin puntos ni comas." },
-        { path: "detalle.moneda", label: "Moneda", type: "text" },
+        { path: "detalle.moneda", label: "Moneda", type: "select", options: MONEDAS },
         { path: "detalle.notifico_autoridad", label: "¿Notificó a otra autoridad?", type: "checkbox" },
         { path: "detalle.personas_solicitadas", label: "¿Las personas fueron solicitadas por alguna entidad competente?", type: "checkbox" },
         { path: "detalle.documentos_soporte", label: "¿Documentos de soporte de la operación sospechosa?", type: "checkbox" },
@@ -314,6 +332,11 @@
   function evaluarCampo(campo, doc) {
     var valor = obtener(doc, campo.path);
     if (campo.validate) return !!campo.validate(valor == null ? "" : valor, doc);
+    if (campo.type === "bloques") {
+      var arr = Array.isArray(valor) ? valor : [];
+      if (!campo.maxPorBloque) return true;
+      return arr.every(function (l) { return String(l).length <= campo.maxPorBloque; });
+    }
     if (campo.type === "textarea" || campo.type === "text") {
       var s = String(valor == null ? "" : valor);
       if (campo.min && s.length > 0 && s.length < campo.min) return false;
@@ -398,6 +421,81 @@
     return wrapper;
   }
 
+  // Campo de bloques repetibles (p. ej. señales de alerta): un bloque por alerta,
+  // tal cual se ve en el PDF, con botón "quitar" por bloque y "agregar" al final.
+  function crearCampoBloques(campo, doc) {
+    var wrapper = el("div", { class: "campo full" });
+    var label = el("label", { text: campo.label });
+    var lista = el("div", { class: "bloques-lista" });
+    var btnAgregar = el("button", { type: "button", class: "btn-bloque-agregar", text: "+ Agregar alerta" });
+    var err = el("div", { class: "campo-err",
+      text: "Cada alerta debe tener " + campo.maxPorBloque + " caracteres o menos." });
+    wrapper.appendChild(label);
+    wrapper.appendChild(lista);
+    wrapper.appendChild(btnAgregar);
+    wrapper.appendChild(err);
+
+    function valorActual() {
+      var v = obtener(doc, campo.path);
+      return Array.isArray(v) ? v.slice() : [];
+    }
+
+    function guardar(arr) {
+      asignar(doc, campo.path, arr);
+      wrapper.classList.toggle("invalid", !evaluarCampo(campo, doc));
+      actualizarBotonDescargar();
+      if (_callbacks.onChange) _callbacks.onChange(doc);
+    }
+
+    function renderBloques() {
+      lista.innerHTML = "";
+      var arr = valorActual();
+      var paraMostrar = arr.length ? arr : [""];   // al menos un bloque para poder escribir
+      paraMostrar.forEach(function (texto, idx) {
+        var bloque = el("div", { class: "bloque-alerta" + (texto.length > campo.maxPorBloque ? " invalid" : "") });
+        var ta = el("textarea", { rows: 2 });
+        ta.value = texto;
+        var pie = el("div", { class: "bloque-pie" });
+        var contador = el("span", { class: "bloque-contador", text: texto.length + " / " + campo.maxPorBloque });
+        var btnQuitar = el("button", { type: "button", class: "btn-bloque-quitar", text: "✕ Quitar" });
+
+        ta.addEventListener("input", function () {
+          var actuales = valorActual();
+          while (actuales.length <= idx) actuales.push("");
+          actuales[idx] = ta.value;
+          contador.textContent = ta.value.length + " / " + campo.maxPorBloque;
+          bloque.classList.toggle("invalid", ta.value.length > campo.maxPorBloque);
+          guardar(actuales);
+        });
+        btnQuitar.addEventListener("click", function () {
+          var actuales = valorActual();
+          actuales.splice(idx, 1);
+          guardar(actuales);
+          renderBloques();
+        });
+
+        pie.appendChild(contador);
+        pie.appendChild(btnQuitar);
+        bloque.appendChild(ta);
+        bloque.appendChild(pie);
+        lista.appendChild(bloque);
+      });
+    }
+
+    btnAgregar.addEventListener("click", function () {
+      var actuales = valorActual();
+      actuales.push("");
+      guardar(actuales);
+      renderBloques();
+      var areas = lista.querySelectorAll("textarea");
+      if (areas.length) areas[areas.length - 1].focus();
+    });
+
+    renderBloques();
+    if (!evaluarCampo(campo, doc)) wrapper.classList.add("invalid");
+    return wrapper;
+  }
+
   var _camposRenderizados = [];   // [{wrapper, campo}] de la vista actual, para revisar condicionales
 
   function revisarCondicionales(doc) {
@@ -418,6 +516,14 @@
       if (campo.grupoTitulo) {
         contenedor.appendChild(grid);
         contenedor.appendChild(el("div", { class: "grupo-titulo", text: campo.grupoTitulo }));
+        grid = el("div", { class: "campos-grid" });
+        return;
+      }
+      if (campo.type === "bloques") {
+        contenedor.appendChild(grid);
+        var wrapperBloques = crearCampoBloques(campo, doc);
+        _camposRenderizados.push({ wrapper: wrapperBloques, campo: campo });
+        contenedor.appendChild(wrapperBloques);
         grid = el("div", { class: "campos-grid" });
         return;
       }
