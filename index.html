@@ -36,7 +36,6 @@
     header h1.brand-lockup{ margin:0 0 6px; }
     header h1.brand-lockup .brand-icon{ width:34px; height:34px; }
     header h1.brand-lockup .brand-word{ font-size:26px; }
-    header p{ color:#5a6b7d; font-size:13px; margin:0; line-height:1.5; max-width:440px; }
 
     .card{ background:#fff; border:1px solid var(--line); border-radius:16px;
            box-shadow:0 4px 24px rgba(19,31,68,.08); padding:26px 28px; }
@@ -74,20 +73,35 @@
     button:hover{ background:var(--navy2); }
     button:disabled{ opacity:.65; cursor:progress; }
 
-    /* ---- Marca en la esquina superior (visible solo autenticado) ---- */
-    .topbar{ position:fixed; top:16px; left:20px; z-index:10; }
-    .topbar .brand-icon{ width:26px; height:26px; }
-    .topbar .brand-word{ font-size:16px; }
+    /* ---- Barra superior: marca + cuenta + logout (visible solo autenticado) ---- */
+    /* Fondo navy solido -> se distingue siempre del contenido, que además queda
+       DETRÁS al desplazarse (position:fixed + z-index por encima del flujo normal). */
+    .topbar{ position:fixed; top:0; left:0; right:0; z-index:100; background:var(--navy);
+      box-shadow:0 4px 18px rgba(6,11,26,.28); display:flex; align-items:center;
+      padding:16px 28px; gap:18px; }
+    .topbar .brand-icon{ width:42px; height:42px; }
+    .topbar .brand-word{ font-size:23px; letter-spacing:.3px; color:#fff; }
+    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; }
+    .topbar .user-section{ display:flex; align-items:center; gap:14px; font-size:13px;
+      color:rgba(255,255,255,.72); }
+    .topbar .user-section button{ width:auto; margin:0; background:transparent;
+      color:rgba(255,255,255,.9); border:1px solid rgba(255,255,255,.3); padding:7px 16px;
+      border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
+      transition:background .15s ease, border-color .15s ease; }
+    .topbar .user-section button:hover{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.5); }
+
+    /* Deja lugar bajo la barra fija (solo la app la muestra; login/expirada no). */
+    #app{ padding-top:82px; }
 
     /* ---- Login ---- */
     #view-login{ display:flex; justify-content:center; align-items:flex-start; padding-top:6vh; }
     .login-card{ background:#fff; border:1px solid var(--line); border-radius:20px;
            box-shadow:0 6px 28px rgba(19,31,68,.10); padding:36px 32px; width:100%; max-width:380px;
            text-align:center; }
-    .login-brand{ display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:8px; }
-    .login-brand .brand-icon{ width:44px; height:44px; }
+    .login-brand{ display:flex; flex-direction:row; align-items:center; justify-content:center;
+      gap:12px; margin-bottom:26px; }
+    .login-brand .brand-icon{ width:40px; height:40px; }
     .login-brand .brand-word{ font-size:24px; }
-    .login-tagline{ color:#7a8896; font-size:12.5px; line-height:1.5; margin:0 0 22px; }
     .login-divider{ border:0; border-top:1px solid var(--line); margin:0 0 22px; }
     .login-title{ color:var(--navy); font-size:17px; margin:0 0 6px; font-weight:700; }
     .login-sub{ color:#6b7a8d; font-size:13px; margin:0 0 22px; line-height:1.5; }
@@ -103,7 +117,7 @@
     .expired-card button{ background:var(--navy); }
 
     /* ---- Paso a paso (país → documento → datos) ---- */
-    .stepper{ display:flex; align-items:center; margin:0 0 22px; user-select:none; }
+    .stepper{ display:flex; align-items:center; margin:6px 0 22px; user-select:none; }
     .step{ display:flex; align-items:center; gap:9px; color:#9aa7b4; }
     .step-num{ display:flex; align-items:center; justify-content:center; flex:none;
            width:26px; height:26px; border-radius:50%; background:#e7ebf1; color:#8493a3;
@@ -150,11 +164,6 @@
     /* Sublista (p. ej. operaciones sin consultar en BD, agrupadas por mes). */
     .banner ul.faltantes ul{ margin:2px 0 4px; padding-left:18px; }
     .banner ul.faltantes ul li{ margin:1px 0; opacity:.9; }
-    .userbar{ display:flex; justify-content:flex-end; align-items:center; gap:10px; font-size:12px;
-              color:#5a6b7d; margin-bottom:6px; }
-    .userbar button{ width:auto; margin:0; background:none; color:var(--navy2); border:0; padding:0;
-              font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .userbar button:hover{ text-decoration:underline; }
     .reglas{ margin-top:10px; font-size:12px; }
     .reglas .r{ padding:5px 0; border-top:1px solid rgba(0,0,0,.08); }
     .reglas .on{ color:var(--accent); font-weight:600; }
@@ -261,15 +270,23 @@
   </style>
 </head>
 <body>
-  <!-- Marca GEREO en la esquina superior: visible en todo momento MENOS al iniciar sesión. -->
-  <div id="topbar" class="topbar brand-lockup" hidden>
-    <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="#131F44"/>
-      <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
-      <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
-      <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
-    </svg>
-    <span class="brand-word">GEREO</span>
+  <!-- Barra superior: marca + cuenta + cerrar sesión. Visible en todo momento MENOS
+       al iniciar sesión o con la sesión expirada. -->
+  <div id="topbar" class="topbar" hidden>
+    <div class="brand-lockup">
+      <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="rgba(255,255,255,.14)"/>
+        <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
+        <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
+        <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
+      </svg>
+      <span class="brand-word">GEREO</span>
+    </div>
+    <span class="topbar-divider" aria-hidden="true"></span>
+    <div class="user-section">
+      <span id="user-email"></span>
+      <button type="button" id="btn-logout">Cerrar sesión</button>
+    </div>
   </div>
 
   <div class="wrap">
@@ -286,7 +303,6 @@
           </svg>
           <span class="brand-word">GEREO</span>
         </div>
-        <p class="login-tagline">Generador de Reportes de Operaciones Sospechosas y en Efectivo</p>
         <hr class="login-divider">
         <h2 class="login-title">Iniciar sesión</h2>
         <p class="login-sub">Usa tu cuenta de Google de empresa <b>@global66.com</b></p>
@@ -298,24 +314,6 @@
 
     <!-- ===================== APP (oculta hasta autenticar) ===================== -->
     <div id="app" hidden>
-      <div class="userbar">
-        <span id="user-email"></span>
-        <button type="button" id="btn-logout">Cerrar sesión</button>
-      </div>
-
-      <header>
-        <h1 class="brand-lockup">
-          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="8" fill="#131F44"/>
-            <rect x="7" y="9" width="18" height="4" rx="2" fill="#FFFFFF"/>
-            <rect x="7" y="15" width="13" height="4" rx="2" fill="#FFFFFF" opacity=".7"/>
-            <rect x="7" y="21" width="8" height="4" rx="2" fill="#FFAB40"/>
-          </svg>
-          <span class="brand-word">GEREO</span>
-        </h1>
-        <p>Generador de Reporte de Operaciones Sospechosas (ROS) y en Efectivo (ROE).</p>
-      </header>
-
       <!-- Paso a paso: siempre visible, resume la selección y permite volver a un paso ya completado. -->
       <div class="stepper" id="stepper">
         <div class="step" data-step="pais"><span class="step-num">1</span><span class="step-label">País</span></div>
