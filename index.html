@@ -185,6 +185,7 @@
     .choice-grid{ display:grid; gap:14px; }
     .choice-grid.paises{ grid-template-columns:1fr 1fr 1fr; }
     .choice-grid.tipos{ grid-template-columns:1fr 1fr; }
+    .choice-grid.segmentos{ grid-template-columns:1fr 1fr; margin-bottom:8px; }
     .choice{ width:100%; margin-top:0; background:#fff; color:var(--navy); border:2px solid var(--line);
              border-radius:14px; padding:26px 12px; font-size:17px; font-weight:700; cursor:pointer;
              font-family:inherit; transition:border-color .12s, background .12s, box-shadow .12s; }
@@ -409,46 +410,59 @@
           <form id="form">
             <input type="hidden" id="pais" name="pais">
             <input type="hidden" id="tipo_documento" name="tipo_documento">
+            <input type="hidden" id="segmento" name="segmento">
 
-            <label for="customer_id">ID de cliente</label>
-            <input type="text" id="customer_id" name="customer_id"
-                   placeholder="Ej: 2402916" autocomplete="off">
-            <div class="hint">Identificador del cliente en la base de datos.</div>
-
-            <div class="row">
-              <div>
-                <label for="fecha_inicio">Fecha de inicio</label>
-                <input type="text" id="fecha_inicio" name="fecha_inicio"
-                       placeholder="mm/aaaa" autocomplete="off">
-                <div class="hint">Mes/año, ej: 02/2025</div>
-              </div>
-              <div>
-                <label for="fecha_fin">Fecha de fin <span style="text-transform:none;font-weight:400">(opcional)</span></label>
-                <input type="text" id="fecha_fin" name="fecha_fin"
-                       placeholder="mm/aaaa (actual)" autocomplete="off">
-                <div class="hint">Si se omite, usa el mes/año actual.</div>
-              </div>
+            <label>Tipo de cliente</label>
+            <div class="choice-grid segmentos">
+              <button type="button" class="choice seg" data-segmento="B2B">B2B
+                <span class="sub">Persona jurídica</span></button>
+              <button type="button" class="choice seg" data-segmento="B2C">B2C
+                <span class="sub">Persona natural</span></button>
             </div>
+            <div class="hint">La búsqueda en la base de datos se hace solo con las consultas
+              del tipo de cliente elegido.</div>
 
-            <div id="vinc-zona">
-              <button type="button" id="btn-add-vinc" class="btn-sec">+ Agregar vinculados</button>
-              <div id="vinc-box" hidden>
-                <label for="vinculados">IDs de vinculados
-                  <span style="text-transform:none;font-weight:400">(opcional)</span></label>
-                <textarea id="vinculados" name="vinculados" rows="4" autocomplete="off"
-                  placeholder="IDs separados por coma o uno por línea. Ej:&#10;3105060, 487532&#10;9000001"></textarea>
-                <div class="hint">
-                  Personas naturales y/o jurídicas vinculadas al reportado. Solo se piden
-                  sus IDs (sin fechas). Máximo <span id="vinc-max">15</span>.
-                  <span id="vinc-count" class="vinc-count"></span>
+            <div id="ros-datos-zona" hidden>
+              <label for="customer_id">ID de cliente</label>
+              <input type="text" id="customer_id" name="customer_id"
+                     placeholder="Ej: 2402916" autocomplete="off">
+              <div class="hint">Identificador del cliente en la base de datos.</div>
+
+              <div class="row">
+                <div>
+                  <label for="fecha_inicio">Fecha de inicio</label>
+                  <input type="text" id="fecha_inicio" name="fecha_inicio"
+                         placeholder="mm/aaaa" autocomplete="off">
+                  <div class="hint">Mes/año, ej: 02/2025</div>
                 </div>
-                <button type="button" id="btn-del-vinc" class="btn-link">Quitar vinculados</button>
+                <div>
+                  <label for="fecha_fin">Fecha de fin <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+                  <input type="text" id="fecha_fin" name="fecha_fin"
+                         placeholder="mm/aaaa (actual)" autocomplete="off">
+                  <div class="hint">Si se omite, usa el mes/año actual.</div>
+                </div>
               </div>
-            </div>
 
-            <div class="acciones-form">
-              <button type="submit" id="btn">Iniciar análisis</button>
-              <button type="button" id="btn-ver-analisis" class="btn-sec" hidden>Ver información</button>
+              <div id="vinc-zona">
+                <button type="button" id="btn-add-vinc" class="btn-sec">+ Agregar vinculados</button>
+                <div id="vinc-box" hidden>
+                  <label for="vinculados">IDs de vinculados
+                    <span style="text-transform:none;font-weight:400">(opcional)</span></label>
+                  <textarea id="vinculados" name="vinculados" rows="4" autocomplete="off"
+                    placeholder="IDs separados por coma o uno por línea. Ej:&#10;3105060, 487532&#10;9000001"></textarea>
+                  <div class="hint">
+                    Personas naturales y/o jurídicas vinculadas al reportado. Solo se piden
+                    sus IDs (sin fechas). Máximo <span id="vinc-max">15</span>.
+                    <span id="vinc-count" class="vinc-count"></span>
+                  </div>
+                  <button type="button" id="btn-del-vinc" class="btn-link">Quitar vinculados</button>
+                </div>
+              </div>
+
+              <div class="acciones-form">
+                <button type="submit" id="btn">Iniciar análisis</button>
+                <button type="button" id="btn-ver-analisis" class="btn-sec" hidden>Ver información</button>
+              </div>
             </div>
           </form>
         </div>

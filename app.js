@@ -385,6 +385,7 @@
           $("vinculados").value = "";
           $("vinc-box").hidden = true;
           $("btn-add-vinc").hidden = false;
+          resetSegmento();   // el tipo de cliente (B2B/B2C) es de OTRO documento
         } else if (esRoeChile) {
           resetRoe();   // deja el formulario ROE limpio al entrar
         } else {
@@ -394,6 +395,33 @@
         limpiarBanner();
         mostrarVista(viewForm);
         actualizarStepper("form");
+      });
+    });
+
+    // ------------------------------------------------------------------- //
+    // Segmento (B2B/B2C): gatilla qué consulta se hace en la BD (persona
+    // jurídica o natural). El resto del formulario (ID, fechas, vinculados)
+    // queda oculto hasta elegir uno; solo se puede tener uno seleccionado.
+    // ------------------------------------------------------------------- //
+    var segEls = document.querySelectorAll("[data-segmento]");
+    var segInput = $("segmento");
+    var rosDatosZona = $("ros-datos-zona");
+
+    function resetSegmento() {
+      segEls.forEach(function (x) { x.classList.remove("sel"); });
+      segInput.value = "";
+      rosDatosZona.hidden = true;
+    }
+
+    segEls.forEach(function (b) {
+      b.addEventListener("click", function () {
+        segEls.forEach(function (x) { x.classList.remove("sel"); });
+        b.classList.add("sel");
+        segInput.value = b.dataset.segmento;
+        rosDatosZona.hidden = false;
+        limpiarBanner();
+        borrarAnalisis();
+        $("btn-ver-analisis").hidden = true;
       });
     });
 
@@ -526,6 +554,10 @@
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
+      if (!form.segmento.value) {
+        mostrarBanner("error", "Faltan datos", " Selecciona el tipo de cliente (B2B o B2C).");
+        return;
+      }
       if (!form.customer_id.value.trim() || !form.fecha_inicio.value.trim()) {
         mostrarBanner("error", "Faltan datos", " Ingresa al menos el ID de cliente y la fecha de inicio.");
         return;
