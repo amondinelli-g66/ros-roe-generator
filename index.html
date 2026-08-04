@@ -68,9 +68,13 @@
        real; esto es solo la capa visual encima. */
     .sel-wrap{ position:relative; display:block; width:100%; }
     .sel-wrap > select{ position:absolute; inset:0; width:100%; height:100%; opacity:0; pointer-events:none; }
-    .sel-display{ width:100%; padding:13px 40px 13px 14px; border:1px solid var(--line);
+    /* min-height + flex: si el valor elegido tiene texto vacío (p. ej. ninguna opción
+       coincide todavía), el span de texto queda sin ningún nodo interno y el navegador
+       no genera línea para él -- sin esto, la caja se encoge a solo el padding. */
+    .sel-display{ width:100%; min-height:48px; padding:13px 40px 13px 14px; border:1px solid var(--line);
       border-radius:10px; font-size:16px; font-family:inherit; background:#fff; color:var(--ink);
-      cursor:pointer; position:relative; user-select:none; transition:border-color .12s ease, box-shadow .12s ease; }
+      cursor:pointer; position:relative; user-select:none; display:flex; align-items:center;
+      transition:border-color .12s ease, box-shadow .12s ease; }
     .sel-display:hover{ border-color:var(--orange); }
     .sel-display:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
     .sel-wrap.open .sel-display{ border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
