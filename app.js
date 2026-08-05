@@ -399,18 +399,17 @@
     });
 
     // ------------------------------------------------------------------- //
-    // Segmento (B2B/B2C): gatilla qué consulta se hace en la BD (persona
-    // jurídica o natural). El resto del formulario (ID, fechas, vinculados)
-    // queda oculto hasta elegir uno; solo se puede tener uno seleccionado.
+    // Segmento (B2B/B2C): gatilla qué consulta se hace en la BD para el ID de
+    // CLIENTE (persona jurídica o natural). Solo se puede tener uno
+    // seleccionado; el resto del formulario ya está visible desde el inicio
+    // (no depende de elegir segmento primero).
     // ------------------------------------------------------------------- //
     var segEls = document.querySelectorAll("[data-segmento]");
     var segInput = $("segmento");
-    var rosDatosZona = $("ros-datos-zona");
 
     function resetSegmento() {
       segEls.forEach(function (x) { x.classList.remove("sel"); });
       segInput.value = "";
-      rosDatosZona.hidden = true;
     }
 
     segEls.forEach(function (b) {
@@ -418,7 +417,6 @@
         segEls.forEach(function (x) { x.classList.remove("sel"); });
         b.classList.add("sel");
         segInput.value = b.dataset.segmento;
-        rosDatosZona.hidden = false;
         limpiarBanner();
         borrarAnalisis();
         $("btn-ver-analisis").hidden = true;
