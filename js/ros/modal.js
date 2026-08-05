@@ -1,12 +1,14 @@
 /* =============================================================================
- * ros-modal.js — modal de revisión/edición del ROS antes de descargar el PDF.
+ * js/ros/modal.js — modal de revisión/edición del ROS antes de descargar el PDF.
  *
- * Muestra TODOS los campos que van al PDF (esquema fijo por documento, espejo
- * exacto de core.paises.<pais>.ros.{ros_fields,fields}.construir_ros_doc y de
- * su plantilla Jinja2) como inputs editables, con validación de FORMATO en
- * vivo (no de contenido: eso lo decide el analista).
+ * Muestra TODOS los campos que van al PDF como inputs editables, con validación
+ * de FORMATO en vivo (no de contenido: eso lo decide el analista). Este archivo
+ * es el MOTOR y el cascarón: no sabe qué campos tiene cada país. El esquema de
+ * campos de cada documento vive en su propio archivo (js/ros/<pais>/campos.js) y
+ * se REGISTRA acá con la clave "<pais>|<tipo de documento>"; antes había un
+ * ternario `ctx.pais === "Colombia" ? … : …` escrito a mano en construirCuerpo.
  *
- * API expuesta (usada por app.js):
+ * API expuesta (usada por js/ros/formulario.js):
  *   RosModal.abrir(doc, ctx, callbacks)
  *     doc: el ros_doc (se muta in-place con cada edición)
  *     ctx: {pais, tipoDocumento, customerId}
@@ -14,7 +16,12 @@
  *   RosModal.cerrar()
  *   RosModal.setMensaje(texto, esError)
  *
- * No conoce sessionStorage ni el backend: eso lo maneja app.js vía los
+ * API para los archivos de campos (se cargan DESPUÉS de este):
+ *   RosModal.registrarEsquema("Chile|ROS", fn)   fn(doc, ctx) -> [secciones]
+ *   RosModal.obtener(doc, "ruta.al.campo")       lectura por ruta con puntos
+ *   RosModal.validadores                         validarRut, validarFecha, …
+ *
+ * No conoce sessionStorage ni el backend: eso lo maneja el formulario ROS vía los
  * callbacks. Construye el DOM con createElement (no innerHTML) porque los
  * valores vienen de la base de datos y pueden traer caracteres especiales.
  * ========================================================================== */
@@ -68,6 +75,8 @@
   // ------------------------------------------------------------------- //
   // Validadores de FORMATO (no de contenido)
   // ------------------------------------------------------------------- //
+  // Viven acá (y se publican en RosModal.validadores) porque los usan los
+  // esquemas de campos de cada país, que están en archivos aparte.
   function limpiarRut(v) {
     var s = String(v || "").trim().toUpperCase().replace(/[.\-\s]/g, "");
     if (s.length < 2) return { cuerpo: "", dv: "" };
@@ -119,211 +128,24 @@
   }
 
   // ------------------------------------------------------------------- //
-  // Esquema — Chile · ROS (espejo de ros_fields.py y ros_template.html)
+  // Registro de esquemas de campos por documento
   // ------------------------------------------------------------------- //
-  var OPT_TRANSACCION_PUNTUAL = "Una transacción puntual realizada por el/los reportado(s)";
-  var OPT_CONJUNTO_OPERACIONES = "Un conjunto de operaciones inusuales realizada por el/los reportado(s)";
-  var OPT_GATILLO_NEGOCIOS = "Alerta informada por personal que se desempeña en los procesos de negocios";
+  // Cada js/ros/<pais>/campos.js se registra a sí mismo al cargarse:
+  //   RosModal.registrarEsquema("Chile|ROS", schemaChile);
+  // La función recibe (doc, ctx) y devuelve el array de secciones. Recibe el doc
+  // porque hay esquemas que dependen de su contenido (Colombia decide si muestra
+  // la sección de persona jurídica o natural según lo que trajo el backend).
+  var ESQUEMAS = {};
 
-  function identidadFieldsChile(prefix) {
-    var esNatural = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Natural"; };
-    var esJuridica = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Jurídica"; };
-    var esNacional = function (doc) { return obtener(doc, prefix + ".tipo_identificacion") === "Nacional (RUN/RUT)"; };
-    return [
-      { path: prefix + ".esta_persona_es", label: "¿Esta persona es?", type: "select", options: ["Reportado", "Vinculado"] },
-      { path: prefix + ".tipo_persona", label: "Tipo persona", type: "select", options: ["Natural", "Jurídica"] },
-      { path: prefix + ".nombre_o_razon_social", label: "Nombre o razón social", type: "text", full: true },
-      { path: prefix + ".apellido_paterno", label: "Apellido paterno", type: "text", showIf: esNatural },
-      { path: prefix + ".apellido_materno", label: "Apellido materno", type: "text", showIf: esNatural },
-      { path: prefix + ".tipo_identificacion", label: "Tipo identificación", type: "select", options: ["Nacional (RUN/RUT)", "Extranjera"] },
-      {
-        path: prefix + ".numero_id", label: "Número ID", type: "text",
-        validate: function (v, doc) { return !v || !esNacional(doc) || validarRut(v); },
-        errMsg: "No supera el dígito verificador (módulo 11). Revisa el RUT/RUN.",
-      },
-      { path: prefix + ".nacionalidad", label: "Nacionalidad", type: "text", showIf: esNatural },
-      { path: prefix + ".pais_residencia", label: "País de residencia", type: "text", showIf: esNatural },
-      { path: prefix + ".pais_constitucion", label: "País de constitución", type: "text", showIf: esJuridica },
-      { path: prefix + ".pais_funcionamiento", label: "País de funcionamiento", type: "text", showIf: esJuridica },
-      { grupoTitulo: "Dirección" },
-      { path: prefix + ".direccion.tipo_direccion", label: "Tipo dirección", type: "select", options: ["Conocida", "Desconocida"] },
-      { path: prefix + ".direccion.tipo_calle", label: "Tipo calle", type: "text" },
-      { path: prefix + ".direccion.nombre_calle", label: "Nombre calle (MAYÚSCULAS)", type: "text", max: 50 },
-      { path: prefix + ".direccion.numero", label: "N°", type: "text" },
-      { path: prefix + ".direccion.complemento", label: "Complemento", type: "text" },
-      { path: prefix + ".direccion.region", label: "Región", type: "text" },
-      { path: prefix + ".direccion.comuna", label: "Comuna", type: "text" },
-      { path: prefix + ".direccion.codigo_postal", label: "Código postal", type: "text" },
-      {
-        path: prefix + ".direccion.telefono", label: "Teléfono", type: "text",
-        disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.telefono_sin_info"); },
-      },
-      { path: prefix + ".direccion.telefono_sin_info", label: "Sin información (teléfono)", type: "checkbox", clears: prefix + ".direccion.telefono" },
-      {
-        path: prefix + ".direccion.movil", label: "Móvil", type: "text",
-        disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.movil_sin_info"); },
-      },
-      { path: prefix + ".direccion.movil_sin_info", label: "Sin información (móvil)", type: "checkbox", clears: prefix + ".direccion.movil" },
-      {
-        path: prefix + ".direccion.email", label: "Email", type: "text",
-        disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.email_sin_info"); },
-        validate: function (v) { return !v || validarEmail(v); }, errMsg: "Formato de email inválido.",
-      },
-      { path: prefix + ".direccion.email_sin_info", label: "Sin información (email)", type: "checkbox", clears: prefix + ".direccion.email" },
-      { grupoTitulo: "Antecedentes" },
-      { path: prefix + ".actividad_economica", label: "Actividad económica (una por línea)", type: "list", full: true },
-      { path: prefix + ".informacion_adicional_actividad", label: "Información adicional de la actividad", type: "textarea", max: 4000, full: true },
-    ];
+  function registrarEsquema(clave, fn) {
+    if (!clave || typeof fn !== "function") return;
+    ESQUEMAS[clave] = fn;
   }
 
-  function schemaChile() {
-    return [
-      {
-        titulo: "Paso 1 — Antecedentes de la(s) operación(es) sospechosa(s)",
-        campos: [
-          { path: "paso1.tipo_reporte", label: "Tipo de reporte", type: "select", options: ["Lavado de Activos", "Financiamiento del Terrorismo", "Ambos"] },
-          { path: "paso1.vinculado_reporte_anterior", label: "¿Vinculado a un reporte anterior?", type: "select", options: ["Sí", "No"] },
-          {
-            path: "paso1.referencia_ultimo_ros", label: "Referencia último ROS", type: "text", full: true,
-            showIf: function (doc) { return obtener(doc, "paso1.vinculado_reporte_anterior") === "Sí"; },
-          },
-          { path: "paso1.reporte_corresponde_a", label: "El reporte corresponde a", type: "select", full: true,
-            options: [OPT_TRANSACCION_PUNTUAL, OPT_CONJUNTO_OPERACIONES] },
-          { path: "paso1.fecha_puntual", label: "Fecha (DD/MM/AAAA)", type: "text",
-            validate: function (v) { return !v || validarFecha(v, "/"); }, errMsg: "Formato esperado: DD/MM/AAAA.",
-            showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_TRANSACCION_PUNTUAL; } },
-          { path: "paso1.desde", label: "Desde (DD/MM/AAAA)", type: "text",
-            validate: function (v) { return !v || validarFecha(v, "/"); }, errMsg: "Formato esperado: DD/MM/AAAA.",
-            showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_CONJUNTO_OPERACIONES; } },
-          { path: "paso1.hasta", label: "Hasta (DD/MM/AAAA)", type: "text",
-            validate: function (v) { return !v || validarFecha(v, "/"); }, errMsg: "Formato esperado: DD/MM/AAAA.",
-            showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_CONJUNTO_OPERACIONES; } },
-          { path: "paso1.cantidad_operaciones", label: "Cantidad de operaciones", type: "text",
-            validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos.",
-            showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_CONJUNTO_OPERACIONES; } },
-          { path: "paso1.monto", label: "Monto (CLP, entero sin puntos ni comas)", type: "text",
-            validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos, sin puntos ni comas." },
-          { path: "paso1.productos", label: "Productos financieros/no financieros utilizados (uno por línea)", type: "list", full: true },
-          { path: "paso1.texto_1", label: "1.- Descripción de los hechos en orden cronológico", type: "textarea", min: 250, max: 1000, full: true },
-          { path: "paso1.texto_2", label: "2.- Qué se consideró sospechoso para enviar el ROS", type: "textarea", min: 250, max: 500, full: true },
-          { path: "paso1.gatillo_alerta", label: "¿Cómo se originó la alerta?", type: "select", full: true,
-            options: ["Alerta automática del sistema informático de cumplimiento", OPT_GATILLO_NEGOCIOS, "Prensa/medios de comunicación", "Otro"] },
-          { path: "paso1.gatillo_alerta_otro", label: "Indique cuál (Otro)", type: "text", full: true,
-            showIf: function (doc) { return obtener(doc, "paso1.gatillo_alerta") === "Otro"; } },
-          { path: "paso1.periodo_analisis_desde", label: "Período de análisis — Desde (DD/MM/AAAA)", type: "text",
-            validate: function (v) { return !v || validarFecha(v, "/"); }, errMsg: "Formato esperado: DD/MM/AAAA." },
-          { path: "paso1.periodo_analisis_hasta", label: "Hasta (DD/MM/AAAA)", type: "text",
-            validate: function (v) { return !v || validarFecha(v, "/"); }, errMsg: "Formato esperado: DD/MM/AAAA." },
-        ],
-      },
-      { titulo: "Paso 2 — Identificación del(los) reportado(s)", campos: identidadFieldsChile("paso2") },
-      { titulo: "Vinculados — Personas vinculadas al reportado", vinculados: true },
-      {
-        titulo: "Paso 3 — Adjuntar archivos en formato digital",
-        campos: [
-          { path: "paso3.descripcion", label: "Descripción", type: "text", max: 40, full: true },
-          { path: "paso3.tipo_producto", label: "Tipo Producto", type: "text" },
-        ],
-      },
-      { titulo: "Anexo A — Señales de alerta evaluadas", reglas: true },
-    ];
-  }
-
-  // ------------------------------------------------------------------- //
-  // Esquema — Colombia · ROS (espejo de fields.py y ros_colombia_template.html)
-  // ------------------------------------------------------------------- //
-  // Listas taxativas de la UIAF (espejo de core/paises/colombia/enums.py).
-  var TIPO_ID_NATURAL = [
-    "Cédula de ciudadanía", "Pasaporte", "Tarjeta de identidad",
-    "Registro civil de nacimiento", "Tarjeta de extranjería",
-    "Cédula de extranjería", "Documento de identidad extranjero",
-  ];
-  var TEMATICAS = [
-    "Concierto para delinquir", "Contrabando", "Contrabando hidrocarburos",
-    "Corrupción", "Delitos contra el sistema financiero",
-    "Delitos contra la administración pública", "Enriquecimiento ilícito",
-    "Exportaciones ficticias", "Extorsión", "Financiamiento del terrorismo",
-    "Fraude aduanero", "Importaciones ficticias", "Minería ilegal",
-    "Operaciones con activos virtuales", "Secuestro extorsivo",
-    "Tráfico de emigrantes", "Tráfico de estupefacientes", "Tráfico de menores",
-    "Tráfico de personas",
-  ];
-  var MONEDAS = ["pesos", "dólar", "euro", "libra", "bolívar", "bolívar fuerte", "otro tipo"];
-
-  function schemaColombia(doc) {
-    var secciones = [
-      {
-        titulo: "1 — Información general del reporte",
-        campos: [
-          { path: "info_general.numero_reporte", label: "Número de reporte", type: "text" },
-          { path: "info_general.clase_reporte", label: "Clase de reporte", type: "select",
-            options: ["Reporte inicial", "Corrección a reporte anterior", "Adición a reporte anterior"] },
-        ],
-      },
-    ];
-
-    if (obtener(doc, "persona_juridica.aplica")) {
-      secciones.push({
-        titulo: "2 — Persona jurídica",
-        campos: [
-          { path: "persona_juridica.tipo_identificacion", label: "Tipo identificación", type: "select",
-            options: ["NIT", "Sociedad extranjera sin NIT en Colombia"] },
-          { path: "persona_juridica.numero_identificacion", label: "Nro. identificación", type: "text" },
-          { path: "persona_juridica.razon_social", label: "Razón social", type: "text", full: true },
-          { path: "persona_juridica.rol", label: "Rol en la operación", type: "text", full: true },
-          { grupoTitulo: "Representante legal" },
-          { path: "persona_juridica.representante.nombre", label: "Nombre", type: "text" },
-          { path: "persona_juridica.representante.primer_apellido", label: "Primer apellido", type: "text" },
-          { path: "persona_juridica.representante.segundo_apellido", label: "Segundo apellido", type: "text" },
-          { path: "persona_juridica.representante.tipo_identificacion", label: "Tipo identificación", type: "text" },
-          { path: "persona_juridica.representante.numero_identificacion", label: "Nro. identificación", type: "text" },
-          { path: "persona_juridica.representante.pep", label: "Representante legal PEP", type: "select", options: ["SI", "NO"] },
-        ],
-      });
-    } else {
-      secciones.push({ titulo: "2 — Persona jurídica", avisoFijo: obtener(doc, "persona_juridica.mensaje") });
-    }
-
-    if (obtener(doc, "persona_natural.aplica")) {
-      secciones.push({
-        titulo: "3 — Persona natural",
-        campos: [
-          { path: "persona_natural.tipo_identificacion", label: "Tipo identificación", type: "select", options: TIPO_ID_NATURAL },
-          { path: "persona_natural.identificacion", label: "Identificación", type: "text" },
-          { path: "persona_natural.nombres", label: "Nombres", type: "text", full: true },
-          { path: "persona_natural.primer_apellido", label: "Primer apellido", type: "text" },
-          { path: "persona_natural.segundo_apellido", label: "Segundo apellido", type: "text" },
-          { path: "persona_natural.entidad", label: "Entidad", type: "text" },
-          { path: "persona_natural.rol", label: "Rol en la operación", type: "text" },
-          { path: "persona_natural.pep", label: "Persona PEP", type: "select", options: ["SI", "NO"] },
-        ],
-      });
-    } else {
-      secciones.push({ titulo: "3 — Persona natural", avisoFijo: obtener(doc, "persona_natural.mensaje") });
-    }
-
-    secciones.push({
-      titulo: "4 — Detalle",
-      campos: [
-        { path: "detalle.periodo_desde", label: "Período de análisis — Desde (DD-MM-AAAA)", type: "text",
-          validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
-        { path: "detalle.periodo_hasta", label: "Hasta (DD-MM-AAAA)", type: "text",
-          validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
-        { path: "detalle.descripcion", label: "Descripción de la operación sospechosa", type: "textarea", full: true },
-        { path: "detalle.tematica", label: "Temática (delito fuente)", type: "select", full: true, options: TEMATICAS },
-        { path: "detalle.senales_alerta", label: "Señales de alerta (máx. 200 caracteres cada una)", type: "bloques", full: true,
-          maxPorBloque: 200 },
-        { path: "detalle.valor_transaccion", label: "Valor de la transacción (sin puntos ni comas)", type: "text",
-          validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos, sin puntos ni comas." },
-        { path: "detalle.moneda", label: "Moneda", type: "select", options: MONEDAS },
-        { path: "detalle.notifico_autoridad", label: "¿Notificó a otra autoridad?", type: "checkbox" },
-        { path: "detalle.personas_solicitadas", label: "¿Las personas fueron solicitadas por alguna entidad competente?", type: "checkbox" },
-        { path: "detalle.documentos_soporte", label: "¿Documentos de soporte de la operación sospechosa?", type: "checkbox" },
-      ],
-    });
-
-    secciones.push({ titulo: "Anexo A — Señales de alerta evaluadas", reglas: true });
-    return secciones;
+  function claveEsquema(ctx) {
+    // El tipo de documento puede no venir en la respuesta del backend; este modal
+    // siempre asumió ROS (mismo criterio que las etiquetas del encabezado).
+    return (ctx && ctx.pais ? ctx.pais : "") + "|" + ((ctx && ctx.tipoDocumento) || "ROS");
   }
 
   // ------------------------------------------------------------------- //
@@ -534,8 +356,13 @@
     contenedor.appendChild(grid);
   }
 
-  function renderVinculados(contenedor, doc) {
+  // Los campos de cada vinculado son los mismos que los del reportado, y eso lo
+  // sabe el esquema del país, no el motor: la sección los aporta en
+  // `camposPorVinculado(prefijo)` (antes se llamaba directo a
+  // identidadFieldsChile, que ahora vive en js/ros/chile/campos.js).
+  function renderVinculados(contenedor, doc, seccion) {
     var lista = doc.vinculados || [];
+    var camposPorVinculado = seccion && seccion.camposPorVinculado;
     if (!lista.length) {
       contenedor.appendChild(el("div", { class: "aviso-fijo", text: "No se ingresaron vinculados para este reporte." }));
       return;
@@ -549,8 +376,12 @@
       if (!v.encontrado) {
         card.appendChild(el("div", { class: "aviso-fijo",
           text: "No se encontró este ID en la base de datos; no se pudo completar su identidad." }));
+      } else if (typeof camposPorVinculado !== "function") {
+        // Fallo de cableado del esquema: mejor decirlo que mostrar la tarjeta vacía.
+        card.appendChild(el("div", { class: "aviso-fijo",
+          text: "El esquema de este documento no define los campos de los vinculados." }));
       } else {
-        renderCampos(card, identidadFieldsChile("vinculados." + i), doc);
+        renderCampos(card, camposPorVinculado("vinculados." + i), doc);
       }
       contenedor.appendChild(card);
     });
@@ -594,7 +425,22 @@
   function construirCuerpo(doc, ctx) {
     body.innerHTML = "";
     _camposRenderizados = [];
-    var esquema = ctx.pais === "Colombia" ? schemaColombia(doc) : schemaChile();
+    var clave = claveEsquema(ctx);
+    var fabrica = ESQUEMAS[clave];
+
+    // Sin esquema registrado NO se puede revisar el documento: se dice en pantalla
+    // (con la clave que se buscó) y se bloquea la descarga, para que nunca quede
+    // un modal en blanco con el botón "Descargar PDF" habilitado.
+    if (!fabrica) {
+      body.appendChild(el("div", { class: "aviso-fijo",
+        text: "No hay un esquema de campos registrado para «" + clave + "», así que no se " +
+          "puede revisar ni descargar este documento. Avisa al equipo técnico: falta " +
+          "cargar el archivo de campos de este país en index.html." }));
+      btnDescargar.disabled = true;
+      return;
+    }
+
+    var esquema = fabrica(doc, ctx) || [];
 
     advertenciasVisibles(doc.meta && doc.meta.advertencias).forEach(function (a) {
       body.appendChild(el("div", { class: "aviso-fijo", text: a }));
@@ -605,7 +451,7 @@
       if (seccion.avisoFijo !== undefined) {
         body.appendChild(el("div", { class: "aviso-fijo", text: seccion.avisoFijo }));
       } else if (seccion.vinculados) {
-        renderVinculados(body, doc);
+        renderVinculados(body, doc, seccion);
       } else if (seccion.reglas) {
         renderReglas(body, doc);
       } else {
@@ -661,5 +507,15 @@
     _callbacks.onDescargar(_doc, _ctx);
   });
 
-  window.RosModal = { abrir: abrir, cerrar: cerrar, setMensaje: setMensaje };
+  window.RosModal = {
+    // API pública de siempre (la usa js/ros/formulario.js).
+    abrir: abrir, cerrar: cerrar, setMensaje: setMensaje,
+    // Extensión para los archivos de campos de cada país.
+    registrarEsquema: registrarEsquema,
+    obtener: obtener,
+    validadores: {
+      limpiarRut: limpiarRut, dvModulo11: dvModulo11, validarRut: validarRut,
+      validarFecha: validarFecha, validarEmail: validarEmail, validarLista: validarLista,
+    },
+  };
 })();

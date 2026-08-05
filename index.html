@@ -7,315 +7,10 @@
        aquí. connect-src incluye el backend en el túnel (Cloudflare, subdominio
        cambiante -> comodín) y Google Identity Services. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://*.trycloudflare.com https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
-  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <!-- Título neutro hasta iniciar sesión; app.js lo cambia tras autenticar. -->
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <!-- Título neutro hasta iniciar sesión; js/comun/nucleo.js lo cambia tras autenticar. -->
   <title>Acceso · GEREO</title>
-  <style>
-    :root{
-      /* ---- Paleta Global66 (misma que el ícono GEREO: navy + naranja) ---- */
-      --navy:#131F44; --navy2:#0F48C7; --line:#dbe2ee; --bg:#f4f6fa; --ink:#131F44;
-      --orange:#FFAB40; --orange-dark:#9F5900; --orange-light:#FFEED9; --orange-hover:#F59A1D;
-      --accent:#b23a2e;                                    /* rojo — error/crítico (fuera de la paleta de marca, uso funcional) */
-      --danger-bg:#fbecea; --danger-text:#7a251c;
-      --ok:#00684B; --ok-bg:#eafff8; --ok-border:#8ee9cc;   /* verde — éxito */
-      --warn:#958209; --warn-bg:#fdf8da; --warn-border:#f4dd48; /* amarillo — advertencia */
-      --info:#095eae; --info-bg:#e4f1fe; --info-border:#a9d3fb;  /* celeste — informativo/neutro */
-    }
-    *{ box-sizing:border-box; }
-    body{ font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-          background:var(--bg); color:var(--ink); margin:0; padding:24px;
-          display:flex; justify-content:center; min-height:100vh; }
-    .wrap{ width:100%; max-width:560px; }
-
-    /* ---- Marca GEREO (ícono + wordmark), reutilizada en topbar/login/header ---- */
-    .brand-icon{ display:block; flex:none; border-radius:8px; }
-    .brand-lockup{ display:flex; align-items:center; gap:10px; }
-    .brand-word{ font-weight:800; letter-spacing:.4px; color:var(--navy); line-height:1; }
-
-    header{ margin:4px 0 22px; }
-    header h1.brand-lockup{ margin:0 0 6px; }
-    header h1.brand-lockup .brand-icon{ width:34px; height:34px; }
-    header h1.brand-lockup .brand-word{ font-size:26px; }
-
-    .card{ background:#fff; border:1px solid var(--line); border-radius:16px;
-           box-shadow:0 4px 24px rgba(19,31,68,.08); padding:32px 34px; }
-    label{ display:block; font-size:12.5px; font-weight:600; color:var(--navy2);
-           text-transform:uppercase; letter-spacing:.3px; margin:16px 0 6px; }
-    input[type=text]{ width:100%; padding:13px 14px; border:1px solid var(--line);
-           border-radius:10px; font-size:16px; font-family:inherit; transition:border-color .12s ease, box-shadow .12s ease; }
-    input[type=text]:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
-    input[type=checkbox]{ accent-color:var(--orange); }
-    textarea{ width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:10px;
-           font-size:15px; font-family:inherit; resize:vertical; transition:border-color .12s ease, box-shadow .12s ease; }
-    textarea:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
-    /* Select con flecha propia (reemplaza la nativa del navegador) y foco/hover en
-       naranja, para que los desplegables se sientan igual de cuidados que el resto. */
-    select{ width:100%; padding:13px 40px 13px 14px; border:1px solid var(--line); border-radius:10px;
-            font-size:16px; font-family:inherit; background-color:#fff; color:var(--ink); cursor:pointer;
-            appearance:none; -webkit-appearance:none; -moz-appearance:none;
-            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237a8896' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-            background-repeat:no-repeat; background-position:right 15px center; background-size:12px 8px;
-            transition:border-color .12s ease, box-shadow .12s ease; }
-    select:hover{ border-color:var(--orange); }
-    select:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
-    select:disabled{ cursor:not-allowed; background-color:#f7f8fa; color:#a7b2bf; }
-    select option{ color:var(--ink); }
-
-    /* ---- Lista desplegable propia (select-ui.js) ----
-       El menú nativo del <select> (la lista de opciones que despliega el SO/navegador)
-       no se puede skinnear de forma consistente entre plataformas, así que se construye
-       una lista propia. El <select> de arriba queda oculto pero sigue siendo el valor
-       real; esto es solo la capa visual encima. */
-    .sel-wrap{ position:relative; display:block; width:100%; }
-    .sel-wrap > select{ position:absolute; inset:0; width:100%; height:100%; opacity:0; pointer-events:none; }
-    /* min-height + flex: si el valor elegido tiene texto vacío (p. ej. ninguna opción
-       coincide todavía), el span de texto queda sin ningún nodo interno y el navegador
-       no genera línea para él -- sin esto, la caja se encoge a solo el padding. */
-    .sel-display{ width:100%; min-height:48px; padding:13px 40px 13px 14px; border:1px solid var(--line);
-      border-radius:10px; font-size:16px; font-family:inherit; background:#fff; color:var(--ink);
-      cursor:pointer; position:relative; user-select:none; display:flex; align-items:center;
-      transition:border-color .12s ease, box-shadow .12s ease; }
-    .sel-display:hover{ border-color:var(--orange); }
-    .sel-display:focus{ outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
-    .sel-wrap.open .sel-display{ border-color:var(--orange); box-shadow:0 0 0 3px rgba(255,171,64,.22); }
-    .sel-display.placeholder .sel-display-text{ color:#98a4b0; }
-    .sel-display.disabled{ background:#f7f8fa; color:#a7b2bf; cursor:not-allowed; }
-    .sel-chevron{ position:absolute; right:15px; top:50%; width:12px; height:8px; color:#7a8896;
-      transform:translateY(-50%); transition:transform .15s ease; pointer-events:none; }
-    .sel-wrap.open .sel-chevron{ transform:translateY(-50%) rotate(180deg); color:var(--orange-dark); }
-    .sel-listbox{ position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:50; margin:0;
-      padding:6px; list-style:none; background:#fff; border:1px solid var(--line); border-radius:12px;
-      box-shadow:0 10px 30px rgba(19,31,68,.16); max-height:240px; overflow-y:auto; }
-    .sel-opt{ padding:10px 12px; border-radius:8px; font-size:15px; color:var(--ink); cursor:pointer; }
-    .sel-opt:hover, .sel-opt.active{ background:var(--orange-light); }
-    .sel-opt.selected{ background:var(--navy); color:#fff; font-weight:600; }
-    .sel-opt.selected.active{ background:var(--navy2); }
-
-    .soc-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px; }
-    .soc{ padding:18px 10px; font-size:16px; }
-    .choice.sel{ border-color:var(--orange); background:var(--orange-light);
-           box-shadow:0 0 0 3px rgba(255,171,64,.28); }
-    .hint{ font-size:12px; color:#7a8896; margin-top:5px; }
-    #vinc-zona{ margin-top:18px; }
-    .btn-sec{ width:auto; margin-top:0; background:#eef3f9; color:var(--navy2); border:1px solid var(--line);
-           padding:12px 20px; border-radius:999px; font-size:14px; font-weight:600; cursor:pointer;
-           font-family:inherit; }
-    .btn-sec:hover{ background:#e2ebf5; }
-    .btn-link{ width:auto; margin-top:9px; background:none; color:var(--accent); border:0; padding:0;
-           font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-link:hover{ text-decoration:underline; background:none; }
-    .vinc-count{ font-weight:600; color:var(--navy2); }
-    .vinc-count.over{ color:var(--accent); }
-    .row{ display:flex; gap:14px; }
-    .row > div{ flex:1; }
-    /* Botón primario: naranja (acento de marca) con texto navy — el naranja claro
-       no da suficiente contraste con texto blanco, así que el texto va oscuro. */
-    button{ width:100%; margin-top:22px; background:var(--orange); color:var(--navy); border:0;
-            padding:16px; border-radius:999px; font-size:16px; font-weight:700; cursor:pointer;
-            font-family:inherit; transition:background .15s ease; }
-    button:hover{ background:var(--orange-hover); }
-    button:disabled{ opacity:.65; cursor:progress; }
-
-    /* ---- Barra superior: marca + cuenta + logout (visible solo autenticado) ---- */
-    /* Fondo navy solido -> se distingue siempre del contenido, que además queda
-       DETRÁS al desplazarse (position:fixed + z-index por encima del flujo normal). */
-    .topbar{ position:fixed; top:0; left:0; right:0; z-index:100; background:var(--navy);
-      box-shadow:0 4px 18px rgba(6,11,26,.28); display:flex; align-items:center;
-      padding:16px 28px; gap:18px; }
-    .topbar .brand-icon{ width:42px; height:42px; }
-    .topbar .brand-word{ font-size:23px; letter-spacing:.3px; color:#fff; }
-    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; margin-left:auto; }
-    .topbar .user-section{ display:flex; align-items:center; gap:14px; font-size:13px;
-      color:rgba(255,255,255,.72); }
-    .topbar .user-section button{ width:auto; margin:0; background:transparent;
-      color:rgba(255,255,255,.9); border:1px solid rgba(255,255,255,.3); padding:7px 16px;
-      border-radius:999px; font-size:12.5px; font-weight:600; cursor:pointer; font-family:inherit;
-      transition:background .15s ease, border-color .15s ease; }
-    .topbar .user-section button:hover{ background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.5); }
-
-    /* Deja lugar bajo la barra fija (solo la app la muestra; login/expirada no). */
-    #app{ padding-top:82px; }
-
-    /* ---- Login ---- */
-    #view-login{ display:flex; justify-content:center; align-items:flex-start; padding-top:6vh; }
-    .login-card{ background:#fff; border:1px solid var(--line); border-radius:24px;
-           box-shadow:0 8px 34px rgba(19,31,68,.12); padding:48px 44px; width:100%; max-width:460px;
-           text-align:center; }
-    .login-brand{ display:flex; flex-direction:row; align-items:center; justify-content:center;
-      gap:14px; margin-bottom:30px; }
-    .login-brand .brand-icon{ width:46px; height:46px; }
-    .login-brand .brand-word{ font-size:27px; }
-    .login-divider{ border:0; border-top:1px solid var(--line); margin:0 0 26px; }
-    .login-title{ color:var(--navy); font-size:19px; margin:0 0 8px; font-weight:700; }
-    .login-sub{ color:#6b7a8d; font-size:14px; margin:0 0 26px; line-height:1.5; }
-    .g-btn{ display:flex; justify-content:center; min-height:44px; }
-    .login-msg{ margin-top:20px; font-size:13px; color:var(--danger-text); background:var(--danger-bg);
-           border:1px solid var(--accent); border-radius:10px; padding:11px 13px; line-height:1.5; text-align:left; }
-    .login-foot{ margin-top:24px; font-size:11.5px; color:#9aa7b4; line-height:1.5; }
-
-    /* ---- Sesión expirada ---- */
-    .expired-card{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn);
-           border-radius:16px; padding:22px 24px; font-size:14px; line-height:1.6; }
-    .expired-card strong{ display:block; font-size:16px; margin-bottom:6px; color:var(--warn); }
-    .expired-card button{ background:var(--navy); color:#fff; }
-    .expired-card button:hover{ background:var(--navy2); }
-
-    /* ---- Texto introductorio: qué es ROS/ROE, sobre el paso a paso ---- */
-    .intro-text{ color:#5a6b7d; font-size:14px; line-height:1.55; margin:2px 0 20px; max-width:480px; }
-
-    /* ---- Paso a paso (país → documento → datos) ---- */
-    .stepper{ display:flex; align-items:center; margin:0 0 22px; user-select:none; }
-    .step{ display:flex; align-items:center; gap:9px; color:#9aa7b4; }
-    .step-num{ display:flex; align-items:center; justify-content:center; flex:none;
-           width:26px; height:26px; border-radius:50%; background:#e7ebf1; color:#8493a3;
-           font-size:12px; font-weight:700; transition:background .15s ease, color .15s ease; }
-    .step-label{ font-size:12.5px; font-weight:600; white-space:nowrap; }
-    .step.active .step-num{ background:var(--orange); color:var(--navy); }
-    .step.active .step-label{ color:var(--navy); }
-    .step.done{ cursor:pointer; }
-    .step.done .step-num{ background:var(--navy); color:#fff; }
-    .step.done .step-label{ color:var(--navy2); }
-    .step.done:hover .step-label{ text-decoration:underline; }
-    .step-line{ flex:1 1 auto; min-width:16px; max-width:56px; height:2px; background:#e7ebf1;
-           margin:0 10px; border-radius:2px; }
-    .step-line.done{ background:var(--navy); }
-
-    /* ---- Asistente (país / tipo de documento) ---- */
-    .paso-titulo{ color:var(--navy); font-size:18px; margin:0 0 16px; }
-    .choice-grid{ display:grid; gap:14px; }
-    .choice-grid.paises{ grid-template-columns:1fr 1fr 1fr; }
-    .choice-grid.tipos{ grid-template-columns:1fr 1fr; }
-    .choice-grid.segmentos{ grid-template-columns:1fr 1fr; margin-bottom:8px; }
-    .choice{ width:100%; margin-top:0; background:#fff; color:var(--navy); border:2px solid var(--line);
-             border-radius:14px; padding:26px 12px; font-size:17px; font-weight:700; cursor:pointer;
-             font-family:inherit; transition:border-color .12s, background .12s, box-shadow .12s; }
-    .choice:hover{ background:#f6f8fc; border-color:var(--orange); box-shadow:0 3px 10px rgba(19,31,68,.10); }
-    .choice .sub{ display:block; font-size:12px; font-weight:500; color:#7a8896; margin-top:6px;
-                  text-transform:none; letter-spacing:0; }
-    .no-disp{ background:var(--info-bg); border:1px solid var(--info-border); color:var(--info);
-              border-radius:14px; padding:20px 22px; font-size:14px; line-height:1.6; }
-    .no-disp strong{ display:block; font-size:15px; margin-bottom:6px; color:var(--navy); }
-    .no-disp p{ margin:6px 0 0; }
-    [hidden]{ display:none !important; }
-
-    .banner{ padding:13px 16px; border-radius:12px; font-size:13px; margin-bottom:16px; line-height:1.5; display:none; }
-    .banner.show{ display:block; }
-    .banner.info{ background:var(--info-bg); border:1px solid var(--info-border); color:var(--info); }
-    .banner.error{ background:var(--danger-bg); border:1px solid var(--accent); color:var(--danger-text); }
-    .banner.ok{ background:var(--ok-bg); border:1px solid var(--ok-border); color:var(--ok); }
-    /* Amarillo (ROE Negativo): sin cartolas faltantes pero sin operaciones sobre el umbral. */
-    .banner.warn{ background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn); }
-    .banner strong{ display:block; margin-bottom:2px; color:var(--navy); }
-    /* Lista de cartolas faltantes / advertencias dentro del banner. */
-    .banner ul.faltantes{ margin:8px 0 0; padding-left:20px; }
-    .banner ul.faltantes li{ margin:2px 0; }
-    /* Sublista (p. ej. operaciones sin consultar en BD, agrupadas por mes). */
-    .banner ul.faltantes ul{ margin:2px 0 4px; padding-left:18px; }
-    .banner ul.faltantes ul li{ margin:1px 0; opacity:.9; }
-    .reglas{ margin-top:10px; font-size:12px; }
-    .reglas .r{ padding:5px 0; border-top:1px solid rgba(0,0,0,.08); }
-    .reglas .on{ color:var(--accent); font-weight:600; }
-    footer{ margin-top:22px; font-size:11px; color:#8493a3; text-align:center; line-height:1.6; }
-    footer .footer-brand{ display:block; margin-bottom:4px; color:#7a8896; font-weight:600; }
-
-    /* ---- Botones de acción del formulario ROS (Iniciar análisis / Ver información) ---- */
-    .acciones-form{ display:flex; gap:10px; margin-top:20px; }
-    .acciones-form button{ margin-top:0; flex:1; }
-
-    /* ---- Modal: revisión/edición del ROS antes de descargar el PDF ---- */
-    @keyframes fondoAparece{ from{ opacity:0; } to{ opacity:1; } }
-    @keyframes modalAparece{ from{ opacity:0; transform:translate(-50%,-50%) scale(.97) translateY(6px); }
-      to{ opacity:1; transform:translate(-50%,-50%) scale(1) translateY(0); } }
-    #modal-backdrop{ display:none; position:fixed; inset:0; background:rgba(13,22,32,.6);
-      backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:1000; }
-    #modal-backdrop.show{ display:block; animation:fondoAparece .18s ease-out; }
-    #modal-analisis{ display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-      z-index:1001; background:#fff; border-radius:16px; width:92%; max-width:940px;
-      max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(10,20,35,.35); }
-    #modal-analisis.show{ display:block; animation:modalAparece .2s cubic-bezier(.2,.8,.3,1); }
-    .modal-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
-      padding:20px 26px; border-bottom:1px solid var(--line); position:sticky; top:0;
-      background:linear-gradient(180deg,#f5f8fb,#ffffff); z-index:1; border-radius:16px 16px 0 0; }
-    .modal-head h2{ margin:0 0 8px; font-size:18px; font-weight:700; color:var(--navy); letter-spacing:.1px; }
-    .modal-head-tags{ display:flex; gap:6px; flex-wrap:wrap; }
-    .modal-head-tags .pill2{ margin:0; }
-    #modal-cerrar{ width:auto; margin:0; background:#fff; color:#7a8896; border:1px solid var(--line);
-      padding:5px 10px; border-radius:8px; font-size:15px; cursor:pointer; line-height:1.4; flex:none;
-      font-family:inherit; }
-    #modal-cerrar:hover{ background:#f0f3f7; color:var(--accent); border-color:#e0c3bd; }
-    #modal-body{ padding:6px 26px 20px; }
-    .modal-foot{ display:flex; align-items:center; gap:12px; padding:16px 26px;
-      border-top:1px solid var(--line); position:sticky; bottom:0; background:#fff;
-      border-radius:0 0 16px 16px; }
-    .modal-foot button{ width:auto; margin:0; padding:11px 24px; }
-    .modal-foot #modal-msg{ flex:1; font-size:12.5px; color:#5a6b7d; }
-    .modal-foot #modal-msg.err{ color:var(--accent); font-weight:600; }
-    #modal-descargar:disabled{ opacity:.55; cursor:not-allowed; }
-
-    /* Pill genérica: contexto en el modal (país/documento/cliente) y en el bloque de vinculados. */
-    .pill2{ display:inline-flex; background:#eaf1fb; border:1px solid #cfe0f5; color:var(--navy);
-      border-radius:20px; padding:2px 12px; font-size:11px; font-weight:700; letter-spacing:.2px;
-      white-space:nowrap; }
-
-    .seccion-titulo{ display:flex; align-items:center; color:var(--navy); font-size:14.5px;
-      font-weight:700; margin:26px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--line); }
-    .seccion-titulo:first-child{ margin-top:10px; }
-    .seccion-badge{ display:inline-flex; align-items:center; background:var(--navy); color:#fff;
-      font-size:11px; font-weight:700; padding:3px 11px; border-radius:20px; margin-right:10px;
-      letter-spacing:.2px; white-space:nowrap; }
-    .grupo-titulo{ font-size:12px; font-weight:700; color:var(--navy2); text-transform:uppercase;
-      letter-spacing:.4px; margin:16px 0 4px; }
-    .campos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
-    .campos-grid .campo.full{ grid-column:1 / -1; }
-    .campo{ margin-bottom:12px; }
-    .campo label{ margin:8px 0 4px; }
-    .campo .contador{ font-weight:400; text-transform:none; color:#8493a3; float:right; }
-    .campo-err{ color:var(--accent); font-size:11.5px; margin-top:4px; display:none; }
-    .campo.invalid input, .campo.invalid textarea{ border-color:var(--accent); background:#fef8f7; }
-    .campo.invalid .campo-err{ display:block; }
-    .campo-check{ display:flex; align-items:center; gap:8px; margin:10px 0 6px; }
-    .campo-check input{ width:auto; }
-    .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }
-    .aviso-fijo{ font-size:13px; color:#516070; background:#f4f7fa; border-radius:0 6px 6px 0;
-      border-left:3px solid var(--navy2); padding:10px 14px; margin:10px 0; line-height:1.5; }
-    .reglas-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:12px;
-      padding:2px 18px; margin:10px 0 4px; }
-    .reglas-card details{ font-size:12.5px; }
-    .reglas-card summary{ cursor:pointer; color:var(--navy2); font-weight:700; padding:11px 0;
-      list-style:none; display:flex; align-items:center; gap:8px; }
-    .reglas-card summary::-webkit-details-marker{ display:none; }
-    .reglas-card summary::before{ content:"▸"; color:#8493a3; transition:transform .15s; }
-    .reglas-card details[open] summary::before{ transform:rotate(90deg); }
-    .reglas-conteo{ background:#eef1f5; color:#5a6b7d; font-weight:700; font-size:11px;
-      padding:2px 9px; border-radius:20px; }
-    .reglas-conteo.hay{ background:var(--danger-bg); color:var(--accent); }
-    .reglas-card .r{ padding:8px 0; border-top:1px solid var(--line); display:flex; align-items:flex-start; gap:2px; }
-    .reglas-card .r.on{ color:var(--ink); }
-    .reglas-card .r:not(.on){ color:#7a8896; }
-    .punto{ display:inline-block; width:9px; height:9px; min-width:9px; border-radius:50%;
-      margin:5px 8px 0 0; }
-    .punto.si{ background:var(--accent); }
-    .punto.no{ background:#c2ccd6; }
-    .vinc-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:12px;
-      padding:2px 18px 8px; margin:14px 0 20px; }
-    .vinc-titulo{ display:flex; align-items:center; gap:10px; padding:14px 0 4px; }
-    .vinc-titulo strong{ color:var(--navy); font-size:13.5px; }
-
-    /* ---- Bloques repetibles (p. ej. señales de alerta), uno por bloque como en el PDF ---- */
-    .bloques-lista{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
-    .bloque-alerta{ background:#fbfcfe; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
-    .bloque-alerta textarea{ margin-bottom:6px; }
-    .bloque-alerta.invalid textarea{ border-color:var(--accent); background:#fef8f7; }
-    .bloque-pie{ display:flex; justify-content:space-between; align-items:center; }
-    .bloque-contador{ font-size:11px; color:#8493a3; }
-    .btn-bloque-quitar{ width:auto; margin:0; background:none; color:var(--accent); border:0;
-      padding:2px 4px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-bloque-quitar:hover{ text-decoration:underline; background:none; }
-    .btn-bloque-agregar{ width:auto; margin-top:10px; background:#eef3f9; color:var(--navy2);
-      border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px;
-      font-weight:600; cursor:pointer; font-family:inherit; }
-    .btn-bloque-agregar:hover{ background:#e2ebf5; }
-  </style>
+  <link rel="stylesheet" href="./css/gereo.css">
 </head>
 <body>
   <!-- Barra superior: marca + cuenta + cerrar sesión. Visible en todo momento MENOS
@@ -552,10 +247,24 @@
 
   <!-- Google Identity Services (botón oficial) + JS del cliente (externo). -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <!-- select-ui.js primero: su observer debe estar activo antes de que app.js/
-       ros-modal.js creen o modifiquen cualquier <select>. -->
-  <script src="./select-ui.js" defer></script>
-  <script src="./ros-modal.js" defer></script>
-  <script src="./app.js" defer></script>
+  <!-- Todos con `defer`: se ejecutan en ESTE orden, ya con el DOM parseado y antes
+       del DOMContentLoaded (donde nucleo.js arranca la sesión). El orden importa:
+         1. select-ui.js  — su observer debe estar activo antes de que cualquier
+                            módulo cree o modifique un <select>.
+         2. nucleo.js     — crea window.GEREO y el registro de formularios: tiene
+                            que existir antes de que alguien se registre.
+         3. ros/modal.js  — crea window.RosModal y el registro de esquemas.
+         4-5. los campos de cada país, que se registran en RosModal.
+         6-7. los formularios, que se registran en GEREO.
+         8. asistente.js  — el último: cuando corre, todo está registrado, y es
+                            quien despacha al formulario del documento elegido. -->
+  <script src="./js/comun/select-ui.js" defer></script>
+  <script src="./js/comun/nucleo.js" defer></script>
+  <script src="./js/ros/modal.js" defer></script>
+  <script src="./js/ros/chile/campos.js" defer></script>
+  <script src="./js/ros/colombia/campos.js" defer></script>
+  <script src="./js/ros/formulario.js" defer></script>
+  <script src="./js/roe/chile/formulario.js" defer></script>
+  <script src="./js/comun/asistente.js" defer></script>
 </body>
 </html>
