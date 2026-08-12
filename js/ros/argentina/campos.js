@@ -37,20 +37,62 @@
   var RELACION_HECHO = ["DIRECTA", "INDIRECTA", "INCUMPLIMIENTO DE LA DEBIDA DILIGENCIA"];
   var RELACION_PRODUCTO = ["Directa", "Indirecta"];
   var SI_NO = ["SI", "NO"];
-  // El domicilio y la operación usan listas de provincias DISTINTAS (el
-  // formulario oficial escribe distinto los mismos nombres): no unificarlas.
-  var PROVINCIAS_DOMICILIO = [
+  // UNA sola lista de provincias para el domicilio (sección 3) y el lugar de
+  // los hechos (sección 4). CORREGIDO: la UIF nunca dice "Capital Federal" en
+  // ninguna de las dos secciones, siempre "CABA" — era un error de
+  // transcripción de la especificación, no una diferencia real del formulario.
+  var PROVINCIAS = [
     "CABA", "Buenos Aires", "Catamarca", "Córdoba", "Corrientes", "Chaco", "Chubut",
     "Entre Ríos", "Formosa", "Jujuy", "La Pampa", "La Rioja", "Mendoza", "Misiones",
     "Neuquén", "Río Negro", "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fé",
     "Santiago Del Estero", "Tucumán", "Tierra del Fuego", "Otro/a",
   ];
-  var PROVINCIAS_OPERACION = [
-    "Buenos Aires", "Capital Federal", "Catamarca", "Chaco", "Chubut", "Córdoba",
-    "Corrientes", "Entre Ríos", "Formosa", "Jujuy", "La Pampa", "La Rioja", "Mendoza",
-    "Misiones", "Neuquén", "Río Negro", "Salta", "San Juan", "San Luis", "Santa Cruz",
-    "Santa Fe", "Santiago del Estero", "Tierra del Fuego", "Tucumán", "Otro/a",
+  var FUENTE_INFORMACION = ["Fuente Judicial", "Análisis propio del Sujeto Obligado", "Artículo Periodístico"];
+  var FUENTE_ARTICULO = [
+    "Internet", "TV", "Radio", "Periódicos", "Facebook o Twitter",
+    "Medios Gráficos", "Otras Fuentes",
   ];
+  // Catálogo de países para el select de "País" del cargo PEP: no es una lista
+  // taxativa de la UIF (no hay valores exactos que verificar contra el
+  // formulario), solo nombres de países en español para el desplegable.
+  var PAISES_MUNDO = [
+    "Afganistán", "Albania", "Alemania", "Andorra", "Angola", "Antigua y Barbuda",
+    "Arabia Saudita", "Argelia", "Argentina", "Armenia", "Australia", "Austria",
+    "Azerbaiyán", "Bahamas", "Bangladés", "Barbados", "Baréin", "Bélgica", "Belice",
+    "Benín", "Bielorrusia", "Birmania", "Bolivia", "Bosnia y Herzegovina", "Botsuana",
+    "Brasil", "Brunéi", "Bulgaria", "Burkina Faso", "Burundi", "Bután", "Cabo Verde",
+    "Camboya", "Camerún", "Canadá", "Catar", "Chad", "Chile", "China", "Chipre",
+    "Ciudad del Vaticano", "Colombia", "Comoras", "Corea del Norte", "Corea del Sur",
+    "Costa de Marfil", "Costa Rica", "Croacia", "Cuba", "Dinamarca", "Dominica",
+    "Ecuador", "Egipto", "El Salvador", "Emiratos Árabes Unidos", "Eritrea",
+    "Eslovaquia", "Eslovenia", "España", "Estados Unidos", "Estonia", "Etiopía",
+    "Filipinas", "Finlandia", "Fiyi", "Francia", "Gabón", "Gambia", "Georgia",
+    "Ghana", "Granada", "Grecia", "Guatemala", "Guyana", "Guinea", "Guinea-Bisáu",
+    "Guinea Ecuatorial", "Haití", "Honduras", "Hungría", "India", "Indonesia",
+    "Irak", "Irán", "Irlanda", "Islandia", "Islas Marshall", "Islas Salomón",
+    "Israel", "Italia", "Jamaica", "Japón", "Jordania", "Kazajistán", "Kenia",
+    "Kirguistán", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letonia", "Líbano",
+    "Liberia", "Libia", "Liechtenstein", "Lituania", "Luxemburgo", "Macedonia del Norte",
+    "Madagascar", "Malasia", "Malaui", "Maldivas", "Malí", "Malta", "Marruecos",
+    "Mauricio", "Mauritania", "México", "Micronesia", "Moldavia", "Mónaco",
+    "Mongolia", "Montenegro", "Mozambique", "Namibia", "Nauru", "Nepal", "Nicaragua",
+    "Níger", "Nigeria", "Noruega", "Nueva Zelanda", "Omán", "Países Bajos",
+    "Pakistán", "Palaos", "Panamá", "Papúa Nueva Guinea", "Paraguay", "Perú",
+    "Polonia", "Portugal", "Reino Unido", "República Centroafricana",
+    "República Checa", "República del Congo", "República Democrática del Congo",
+    "República Dominicana", "Ruanda", "Rumania", "Rusia", "Samoa", "San Cristóbal y Nieves",
+    "San Marino", "San Vicente y las Granadinas", "Santa Lucía", "Santo Tomé y Príncipe",
+    "Senegal", "Serbia", "Seychelles", "Sierra Leona", "Singapur", "Siria",
+    "Somalia", "Sri Lanka", "Suazilandia", "Sudáfrica", "Sudán", "Sudán del Sur",
+    "Suecia", "Suiza", "Surinam", "Tailandia", "Tanzania", "Tayikistán",
+    "Timor Oriental", "Togo", "Tonga", "Trinidad y Tobago", "Túnez", "Turkmenistán",
+    "Turquía", "Tuvalu", "Ucrania", "Uganda", "Uruguay", "Uzbekistán", "Vanuatu",
+    "Venezuela", "Vietnam", "Yemen", "Yibuti", "Zambia", "Zimbabue",
+  ];
+
+  function esArticuloPeriodistico(doc) {
+    return obtener(doc, "delito_precedente.fuente_informacion") === "Artículo Periodístico";
+  }
 
   function esFechaUIF(v) { return !v || validarFecha(v, "/"); }
   var ERR_FECHA = "Formato esperado: DD/MM/AAAA.";
@@ -69,7 +111,7 @@
       { path: base + ".departamento", label: "Departamento", type: "text" },
       { path: base + ".localidad", label: "Localidad", type: "text" },
       { path: base + ".codigo_postal", label: "Código postal", type: "text" },
-      { path: base + ".provincia", label: "Provincia", type: "select", options: PROVINCIAS_DOMICILIO },
+      { path: base + ".provincia", label: "Provincia", type: "select", options: PROVINCIAS },
       { path: base + ".provincia_otro", label: "Otro (provincia)", type: "text" },
       { path: base + ".pais", label: "País", type: "text" },
       { path: base + ".email", label: "Email", type: "text",
@@ -82,6 +124,7 @@
   }
 
   function camposVinculos(base) {
+    var esPep = function (doc) { return !!obtener(doc, base + ".es_pep"); };
     return [
       { grupoTitulo: "Vínculos y perfil transaccional" },
       { path: base + ".paraiso_fiscal", label: "Relacionada con paraíso fiscal", type: "text", full: true },
@@ -90,6 +133,12 @@
       { path: base + ".es_pep", label: "Es PEP", type: "checkbox" },
       { path: base + ".relacion_hecho", label: "Relación con el hecho reportado", type: "select", options: RELACION_HECHO },
       { path: base + ".actividad", label: "Actividad", type: "text" },
+      // Cargo y dependencia solo se piden (y son obligatorios) si es PEP.
+      { grupoTitulo: "Datos del cargo (obligatorios por ser PEP)", showIf: esPep },
+      { path: base + ".cargo", label: "Cargo", type: "text", showIf: esPep },
+      { path: base + ".dependencia", label: "Dependencia", type: "text", showIf: esPep },
+      { path: base + ".pais_pep", label: "País", type: "select", options: PAISES_MUNDO, showIf: esPep },
+      { path: base + ".desempena_actualmente", label: "Desempeña actualmente", type: "checkbox", showIf: esPep },
     ];
   }
 
@@ -112,7 +161,14 @@
         campos: [
           { path: "delito_precedente.delito", label: "Delito", type: "text", full: true },
           { path: "delito_precedente.fuente_informacion", label: "Fuente de la información", type: "select",
-            full: true, options: ["Fuente Judicial", "Analisis propio del Sujeto Obligado", "Articulo Periodistico"] },
+            full: true, options: FUENTE_INFORMACION },
+          // Obligatorios solo si fuente_informacion = "Artículo Periodístico".
+          { path: "delito_precedente.fuente_articulo", label: "Fuente del artículo", type: "select",
+            options: FUENTE_ARTICULO, showIf: esArticuloPeriodistico },
+          { path: "delito_precedente.fecha_articulo", label: "Fecha del artículo (DD/MM/AAAA)", type: "text",
+            validate: esFechaUIF, errMsg: ERR_FECHA, showIf: esArticuloPeriodistico },
+          { path: "delito_precedente.detalle_origen_articulo", label: "Detalle origen del artículo",
+            type: "textarea", full: true, showIf: esArticuloPeriodistico },
         ],
       },
     ];
@@ -166,17 +222,6 @@
         camposDomicilio("persona_fisica_extranjera"),
         camposVinculos("persona_fisica_extranjera")
       );
-      // Cargo y dependencia solo son obligatorios si la persona es PEP.
-      if (obtener(doc, "persona_fisica_extranjera.es_pep")) {
-        extranjera = extranjera.concat([
-          { grupoTitulo: "Datos del cargo (obligatorios por ser PEP)" },
-          { path: "persona_fisica_extranjera.cargo", label: "Cargo", type: "text" },
-          { path: "persona_fisica_extranjera.dependencia", label: "Dependencia", type: "text" },
-          { path: "persona_fisica_extranjera.pais_pep", label: "País", type: "text" },
-          { path: "persona_fisica_extranjera.desempena_actualmente", label: "Desempeña actualmente",
-            type: "checkbox" },
-        ]);
-      }
       secciones.push({ titulo: "3 — Datos de la persona física extranjera", campos: extranjera });
     } else {
       secciones.push({
@@ -203,7 +248,7 @@
           textoExtra: "+ Agregar más direcciones",
           subcampos: [
             { campo: "localidad", label: "Localidad", type: "text" },
-            { campo: "provincia", label: "Provincia", type: "select", options: PROVINCIAS_OPERACION },
+            { campo: "provincia", label: "Provincia", type: "select", options: PROVINCIAS },
             { campo: "provincia_otro", label: "Otro (provincia)", type: "text" },
             { campo: "pais", label: "País donde se producen los hechos", type: "text" },
             { campo: "es_zona_frontera", label: "Es zona de frontera", type: "checkbox" },

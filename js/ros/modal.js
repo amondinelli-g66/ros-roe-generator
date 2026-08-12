@@ -422,7 +422,9 @@
     campos.forEach(function (campo) {
       if (campo.grupoTitulo) {
         contenedor.appendChild(grid);
-        contenedor.appendChild(el("div", { class: "grupo-titulo", text: campo.grupoTitulo }));
+        var titulo = el("div", { class: "grupo-titulo", text: campo.grupoTitulo });
+        if (campo.showIf) _camposRenderizados.push({ wrapper: titulo, campo: campo });
+        contenedor.appendChild(titulo);
         grid = el("div", { class: "campos-grid" });
         return;
       }
