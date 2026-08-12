@@ -31,6 +31,10 @@
   var DISPONIBLES = new Set();
   // Documentos que admiten vinculados (Colombia reporta un único ID -> sin vinculados).
   var USA_VINC = new Set();
+  // Documentos que admiten UN solo segmento (p. ej. Argentina · ROS: solo B2C).
+  // Lo declara el backend en /config -> documentos[].segmento_fijo, para no
+  // hardcodear países acá.
+  var SEGMENTO_FIJO = {};
   // Qué formulario muestra cada documento: "ros" (estándar) o "roe-chile", etc.
   var FORMULARIOS = {};
   // Formulario cuando el backend no dice otra cosa: espejo exacto del
@@ -182,6 +186,7 @@
             def.reset({
               pais: paisSel, tipo: tipoSel, clave: clave,
               usaVinculados: USA_VINC.has(clave),
+              segmentoFijo: SEGMENTO_FIJO[clave] || null,
             });
           }
         } else {
@@ -208,8 +213,10 @@
         USA_VINC = new Set(cfg.documentos.filter(function (d) { return d.usa_vinculados; })
           .map(function (d) { return d.pais + "|" + d.tipo; }));
         FORMULARIOS = {};
+        SEGMENTO_FIJO = {};
         cfg.documentos.forEach(function (d) {
           FORMULARIOS[d.pais + "|" + d.tipo] = d.formulario || "ros";
+          if (d.segmento_fijo) SEGMENTO_FIJO[d.pais + "|" + d.tipo] = d.segmento_fijo;
         });
       }
     }).catch(function () {});

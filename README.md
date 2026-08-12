@@ -44,9 +44,10 @@ ros-roe-generator/
 │   │   └── asistente.js  # el wizard país → documento → datos y el despacho
 │   ├── ros/
 │   │   ├── modal.js      # motor del modal de revisión + registro de esquemas
-│   │   ├── formulario.js # formulario ROS estándar (sirve a Chile y a Colombia)
+│   │   ├── formulario.js # formulario ROS estándar (Chile, Colombia y Argentina)
 │   │   ├── chile/campos.js       # ===== campos del ROS de Chile =====
-│   │   └── colombia/campos.js    # ===== campos del ROS de Colombia =====
+│   │   ├── colombia/campos.js    # ===== campos del ROS de Colombia =====
+│   │   └── argentina/campos.js   # ===== campos del ROS de Argentina =====
 │   └── roe/
 │       └── chile/formulario.js   # ===== formulario del ROE de Chile =====
 └── .nojekyll             # sitio estático puro (sin procesamiento Jekyll de Pages)
@@ -69,8 +70,10 @@ ros-roe-generator/
 ## Cómo se agrega un proceso (los dos registros)
 
 Todo el diseño se apoya en **dos registros**. Son la razón por la que agregar un proceso
-—Argentina · ROS, el ROE de Colombia— es **crear un archivo y registrarlo**, sin tocar
-el código compartido:
+—el ROE de Colombia, el ROE de Argentina— es **crear un archivo y registrarlo**, sin
+tocar el código compartido. El ROS de Argentina se sumó así: reutiliza tal cual el
+formulario estándar (`js/ros/formulario.js`) y solo aporta su
+`js/ros/argentina/campos.js`.
 
 ```js
 // 1. El FORMULARIO de un documento (lo consume el asistente)
@@ -106,7 +109,8 @@ cargarse:
 1. `js/comun/select-ui.js` — su observer debe estar activo antes de que alguien cree un `<select>`.
 2. `js/comun/nucleo.js` — crea `window.GEREO` y el registro de formularios.
 3. `js/ros/modal.js` — crea `window.RosModal` y el registro de esquemas.
-4. `js/ros/chile/campos.js`, `js/ros/colombia/campos.js` — se registran en `RosModal`.
+4. `js/ros/chile/campos.js`, `js/ros/colombia/campos.js`, `js/ros/argentina/campos.js` —
+   se registran en `RosModal`.
 5. `js/ros/formulario.js`, `js/roe/chile/formulario.js` — se registran en `GEREO`.
 6. `js/comun/asistente.js` — **el último**: cuando corre, todo está registrado, y es quien
    despacha al formulario del documento elegido.

@@ -318,6 +318,91 @@
     return wrapper;
   }
 
+  // Campo de SUBGRUPOS repetibles con tope: un bloque de campos por elemento
+  // (p. ej. los lugares donde se producen los hechos del ROS de Argentina, que
+  // el formulario oficial repite con los sufijos 1, 2 y 3). Se muestra el
+  // primero y un botón va revelando los siguientes hasta `campo.max`; una vez
+  // alcanzado el tope, el mismo botón revela el campo de texto libre
+  // (`campo.extra`) donde va el resto.
+  function crearCampoSubgrupos(campo, doc, ctx) {
+    var wrapper = el("div", { class: "campo full" });
+    var lista = el("div");
+    var btnAgregar = el("button", {
+      type: "button", class: "btn-bloque-agregar",
+      text: campo.textoAgregar || "+ Agregar",
+    });
+    wrapper.appendChild(lista);
+    wrapper.appendChild(btnAgregar);
+
+    var items = obtener(doc, campo.path);
+    if (!Array.isArray(items)) items = [];
+    var max = Math.min(campo.max || items.length, items.length);
+
+    function tieneDatos(item) {
+      return Object.keys(item || {}).some(function (k) {
+        if (k === "orden" || k === "etiqueta") return false;
+        var v = item[k];
+        return v !== "" && v !== false && v != null;
+      });
+    }
+
+    // Arranca mostrando los que ya traen datos del backend (al menos uno).
+    var visibles = 1;
+    items.forEach(function (item, i) {
+      if (tieneDatos(item)) visibles = Math.max(visibles, i + 1);
+    });
+    var extraVisible = !!(campo.extra && obtener(doc, campo.extra.path));
+
+    function render() {
+      lista.innerHTML = "";
+      // Se quitan EN SITIO los campos del render anterior (no se reasigna el
+      // array: otros puntos del modal guardan la referencia).
+      for (var k = _camposRenderizados.length - 1; k >= 0; k--) {
+        var r = _camposRenderizados[k];
+        if (r.deSubgrupo && r.duenio === campo.path) _camposRenderizados.splice(k, 1);
+      }
+      items.slice(0, visibles).forEach(function (item, i) {
+        lista.appendChild(el("div", {
+          class: "grupo-titulo",
+          text: item.etiqueta || (campo.etiquetaBase || "") + " " + (i + 1),
+        }));
+        var grid = el("div", { class: "campos-grid" });
+        campo.subcampos.forEach(function (sub) {
+          var def = Object.assign({}, sub, { path: campo.path + "." + i + "." + sub.campo });
+          var w = crearCampo(def, doc, ctx);
+          _camposRenderizados.push({
+            wrapper: w, campo: def, deSubgrupo: true, duenio: campo.path,
+          });
+          grid.appendChild(w);
+        });
+        lista.appendChild(grid);
+      });
+      if (extraVisible && campo.extra) {
+        var wExtra = crearCampo(
+          Object.assign({}, campo.extra, { full: true }), doc, ctx
+        );
+        _camposRenderizados.push({
+          wrapper: wExtra, campo: campo.extra, deSubgrupo: true, duenio: campo.path,
+        });
+        lista.appendChild(wExtra);
+      }
+      var tope = visibles >= max;
+      btnAgregar.hidden = tope && extraVisible;
+      btnAgregar.textContent = tope
+        ? (campo.textoExtra || "+ Agregar más")
+        : (campo.textoAgregar || "+ Agregar");
+    }
+
+    btnAgregar.addEventListener("click", function () {
+      if (visibles < max) visibles += 1;
+      else extraVisible = true;
+      render();
+    });
+
+    render();
+    return wrapper;
+  }
+
   var _camposRenderizados = [];   // [{wrapper, campo}] de la vista actual, para revisar condicionales
 
   function revisarCondicionales(doc) {
@@ -346,6 +431,12 @@
         var wrapperBloques = crearCampoBloques(campo, doc);
         _camposRenderizados.push({ wrapper: wrapperBloques, campo: campo });
         contenedor.appendChild(wrapperBloques);
+        grid = el("div", { class: "campos-grid" });
+        return;
+      }
+      if (campo.type === "subgrupos") {
+        contenedor.appendChild(grid);
+        contenedor.appendChild(crearCampoSubgrupos(campo, doc, _ctx));
         grid = el("div", { class: "campos-grid" });
         return;
       }
