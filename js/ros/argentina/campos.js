@@ -475,9 +475,7 @@
           validate: esNumero, errMsg: ERR_NUMERO,
           showIf: function (doc) { return obtener(doc, "operaciones.existe_efectivo_o_virtual") === "SI"; } },
 
-        { grupoTitulo: "Señales y descripciones" },
-        { path: "operaciones.senales_alerta", label: "Señales de alerta", type: "bloques", full: true,
-          maxPorBloque: 300 },
+        { grupoTitulo: "Descripciones" },
         { path: "operaciones.descripcion_operatoria", label: "Descripción de la operatoria",
           type: "textarea", full: true, required: true },
         { path: "operaciones.descripcion_analisis",

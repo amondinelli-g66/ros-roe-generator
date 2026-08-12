@@ -403,6 +403,21 @@
     });
     var extraVisible = !!(campo.extra && obtener(doc, campo.extra.path));
 
+    // Al quitar un ítem repetido (o el campo extra) se limpian sus datos: si
+    // el analista se arrepiente y lo vuelve a agregar, arranca en blanco en
+    // vez de reaparecer con lo que había escrito antes.
+    function limpiarItem(indice) {
+      campo.subcampos.forEach(function (sub) {
+        asignar(doc, campo.path + "." + indice + "." + sub.campo, sub.type === "checkbox" ? false : "");
+      });
+    }
+
+    function avisarCambio() {
+      revisarCondicionales(doc);
+      actualizarBotonDescargar();
+      if (_callbacks.onChange) _callbacks.onChange(doc);
+    }
+
     function render() {
       lista.innerHTML = "";
       // Se quitan EN SITIO los campos del render anterior (no se reasigna el
@@ -412,10 +427,30 @@
         if (r.deSubgrupo && r.duenio === campo.path) _camposRenderizados.splice(k, 1);
       }
       items.slice(0, visibles).forEach(function (item, i) {
-        lista.appendChild(el("div", {
+        var titulo = el("div", {
           class: "grupo-titulo",
           text: item.etiqueta || (campo.etiquetaBase || "") + " " + (i + 1),
-        }));
+        });
+        // Solo el ÚLTIMO ítem visible se puede quitar (no tiene sentido dejar
+        // un hueco en medio de la secuencia 1/2/3), y nunca el primero: es la
+        // base obligatoria del grupo.
+        if (i > 0 && i === visibles - 1) {
+          var fila = el("div", { class: "grupo-titulo-row" });
+          fila.appendChild(titulo);
+          var btnQuitarItem = el("button", {
+            type: "button", class: "btn-bloque-quitar", text: "✕ Quitar",
+          });
+          btnQuitarItem.addEventListener("click", function () {
+            limpiarItem(visibles - 1);
+            visibles -= 1;
+            render();
+            avisarCambio();
+          });
+          fila.appendChild(btnQuitarItem);
+          lista.appendChild(fila);
+        } else {
+          lista.appendChild(titulo);
+        }
         var grid = el("div", { class: "campos-grid" });
         campo.subcampos.forEach(function (sub) {
           var def = Object.assign({}, sub, { path: campo.path + "." + i + "." + sub.campo });
@@ -444,6 +479,16 @@
           wrapper: wExtra, campo: campo.extra, deSubgrupo: true, duenio: campo.path,
         });
         lista.appendChild(wExtra);
+        var btnQuitarExtra = el("button", {
+          type: "button", class: "btn-bloque-quitar", text: "✕ Quitar",
+        });
+        btnQuitarExtra.addEventListener("click", function () {
+          asignar(doc, campo.extra.path, "");
+          extraVisible = false;
+          render();
+          avisarCambio();
+        });
+        lista.appendChild(btnQuitarExtra);
       }
       var tope = visibles >= max;
       btnAgregar.hidden = tope && extraVisible;
@@ -456,6 +501,7 @@
       if (visibles < max) visibles += 1;
       else extraVisible = true;
       render();
+      avisarCambio();
     });
 
     render();

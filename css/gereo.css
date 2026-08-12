@@ -258,6 +258,8 @@
       letter-spacing:.2px; white-space:nowrap; }
     .grupo-titulo{ font-size:12px; font-weight:700; color:var(--navy2); text-transform:uppercase;
       letter-spacing:.4px; margin:16px 0 4px; }
+    .grupo-titulo-row{ display:flex; justify-content:space-between; align-items:center; }
+    .grupo-titulo-row .grupo-titulo{ margin:16px 0 4px; }
     .campos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
     .campos-grid .campo.full{ grid-column:1 / -1; }
     .campo{ margin-bottom:12px; }
