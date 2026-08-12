@@ -9,12 +9,23 @@
  * Dos particularidades del formulario, que también decide el backend:
  *   - La sección 3 tiene DOS variantes (persona física / persona física
  *     extranjera) según la NACIONALIDAD del reportado, y son mutuamente
- *     excluyentes: se muestra la que el doc marque como "aplica".
+ *     excluyentes: se muestra la que el doc marque como "aplica". Esa
+ *     decisión la toma el backend al generar el documento (no es reactiva
+ *     dentro del modal, igual que natural/jurídica en Colombia).
  *   - La sección 4 repite el lugar de los hechos con los sufijos 1, 2 y 3
  *     (aquí "Primera/Segunda/Tercera operación"): se usa el campo `subgrupos`,
  *     que muestra el primero y va revelando los siguientes con un botón; al
  *     llegar al tercero, el mismo botón revela "Domicilios adicionales" para la
  *     cuarta dirección en adelante.
+ *
+ * Campos obligatorios/opcionales y condicionales: transcritos de
+ * "formato ROS Argentina.txt" (Obligatorio/Opcional/Condicional de cada
+ * campo). `required` bloquea la descarga si el campo está vacío;
+ * `requiredTrue` es para checkboxes que DEBEN quedar tildados (no alcanza con
+ * que tengan un valor). Un campo condicional usa `showIf` — el motor
+ * (modal.js) ya excluye los campos ocultos de la validación, así que
+ * `required` + `showIf` alcanza para expresar "obligatorio solo si se
+ * cumple la condición".
  *
  * Se registra a sí mismo con la clave del documento, así que basta con cargarlo
  * en index.html para que el modal lo encuentre.
@@ -52,9 +63,148 @@
     "Internet", "TV", "Radio", "Periódicos", "Facebook o Twitter",
     "Medios Gráficos", "Otras Fuentes",
   ];
-  // Catálogo de países para el select de "País" del cargo PEP: no es una lista
-  // taxativa de la UIF (no hay valores exactos que verificar contra el
-  // formulario), solo nombres de países en español para el desplegable.
+
+  var DELITOS_PRECEDENTES = [
+    "Tráfico y comercialización ilícita de estupefacientes (ley 23.737)",
+    "Contrabando de armas y contrabando de estupefacientes (ley 22.415)",
+    "Asociación ilícita", "Fraude contra la administración pública",
+    "Prostitución de menores", "Pornografía infantil", "Extorsión", "Trata de personas",
+    "Narcotráfico", "Cohecho", "Tráfico de influencias",
+    "Malversación de caudales públicos", "Exacciones ilegales",
+    "Enriquecimiento ilícito de funcionarios y empleados", "Evasión simple",
+    "Evasión agravada", "Aprovechamiento indebido de los subsidios",
+    "Obtención fraudulenta de beneficios fiscales", "Apropiación indebida de tributos",
+    "Contrabando de cereales y oleaginosas", "Contrabando de alimentos",
+    "Asociación ilícita fiscal",
+    "Delitos ambientales y/o tráfico de fauna y vida silvestre",
+    "Trata de personas y explotación laboral", "Robo y/o tráfico de obras de arte",
+    "Robo y/o tráfico de objetos y/o documentos históricos",
+    "Tráfico de Residuos peligrosos",
+    "Fabricación, tráfico o contrabando de armas químicas y/o de destrucción masiva",
+    "Defraudaciones y/o estafas", "Fraudes al comercio y a la industria",
+    "Delitos contra el orden económico y/o financiero", "Desabastecimiento",
+    "Delitos cometidos por asociaciones ilícitas (artículo 210 del Código Penal) organizadas para cometer delitos por fines políticos o raciales",
+    "Colocación de activos en el exterior sin declarar",
+    "Intermediación financiera no autorizada",
+    "Suministro o utilización de información financiera privilegiada", "Usura",
+    "Quiebras fraudulentas",
+    "Falseamiento u ocultación de balances, memorias u otros documentos de contabilidad",
+    "Libramiento numerosos de cheques sin fondos", "Fraudes bursátiles",
+    "Especulación con valores negociables para hacer subir o bajar los precios o simular liquidez valiéndose de noticias falsas y/o simuladas",
+    "Empleados y funcionarios de instituciones financieras o bursátiles que recibieran dinero y/ u otros beneficios económicos como condición para celebrar operaciones crediticias",
+    "Delitos que afecten la ley de cambios",
+    "Delitos que afecten la ley de defensa de la competencia",
+  ];
+
+  var PARAISOS_FISCALES = [
+    "Ninguno/a", "ANGUILA (Territorio no autónomo del Reino Unido)",
+    "ANTIGUA Y BARBUDA (Estado independiente)",
+    "ANTILLAS HOLANDESAS (Territorio de Países Bajos)",
+    "ARUBA (Territorio de Países Bajos)", "ASCENCION",
+    "COMUNIDAD DE LAS BAHAMAS (Estado independiente)", "BARBADOS (Estado independiente)",
+    "BELICE (Estado independiente)", "BERMUDAS (Territorio no autónomo del Reino Unido)",
+    "BRUNEI DARUSSALAM (Estado independiente)", "CAMPIONE D'ITALIA",
+    "COLONIA DE GIBRALTAR", "EL COMMONWEALTH DE DOMINICA (Estado Asociado)",
+    "EMIRATOS ARABES UNIDOS (Estado independiente)",
+    "ESTADO DE BAHREIN (Estado independiente)",
+    "ESTADO ASOCIADO DE GRANADA (Estado independiente)",
+    "ESTADO LIBRE ASOCIADO DE PUERTO RICO (Estado asociado a los EEUU)",
+    "ESTADO DE KUWAIT (Estado independiente)", "ESTADO DE QATAR (Estado independiente)",
+    "FEDERACION DE SAN CRISTOBAL (Islas Saint Kitts and Nevis: Independientes)",
+    "LUXEMBURGO (Régimen Aplicable a las Sociedades Holding)", "GROENLANDIA",
+    "GUAM (Territorio no autónomo de los EEUU)", "HONK KONG (Territorio de China)",
+    "ISLAS AZORES",
+    "ISLAS DEL CANAL (Guernesey, Jersey, Alderney, Isla de Great Stark, Herm, Little Sark, Brechou, Jethou Lihou)",
+    "ISLAS CAIMAN (Territorio no autónomo del Reino Unido)", "ISLA CHRISTMAS",
+    "ISLA DE COCOS O KEELING",
+    "ISLAS DE COOK (Territorio autónomo asociado a Nueva Zelanda)",
+    "ISLA DE MAN (Territorio del Reino Unido)", "ISLA DE NORFOLK",
+    "ISLAS TURKAS E ISLAS CAICOS (Territorio no autónomo del Reino Unido)",
+    "ISLAS PACIFICO", "ISLAS SALOMON", "ISLA DE SAN PEDRO Y MIGUELON", "ISLA QESHM",
+    "ISLAS VIRGENES BRITANICAS (Territorio no autónomo del Reino Unido)",
+    "ISLAS VIRGENES DE ESTADOS UNIDOS DE AMERICA", "KIRIBATI", "LABUAN", "MACAO",
+    "MADEIRA (Territorio de Portugal)",
+    "MONTSERRAT (Territorio no autónomo del Reino Unido)", "NIUE", "PATAU", "PITCAIRN",
+    "POLINESIA FRANCESA (Territorio de Ultramar de Francia)",
+    "PRINCIPADO DEL VALLE DE ANDORRA",
+    "PRINCIPADO DE LIECHTENSTEIN (Estado independiente)", "PRINCIPADO DE MONACO",
+    "REGIMEN APLICABLE A LAS SOCIEDADES ANONIMAS FINANCIERAS (regidas por la ley 11.073 del 24 de junio de 1948 de la República Oriental del Uruguay)",
+    "REINO DE TONGA (Estado independiente)", "REINO HACHEMITA DE JORDANIA",
+    "REINO DE SWAZILANDIA (Estado independiente)", "REPUBLICA DE ALBANIA",
+    "REPUBLICA DE ANGOLA", "REPUBLICA DE CABO VERDE (Estado independiente)",
+    "REPUBLICA DE CHIPRE (Estado independiente)",
+    "REPUBLICA DE DJIBUTI (Estado independiente)",
+    "REPUBLICA COOPERATIVA DE GUYANA (Estado independiente)",
+    "REPUBLICA DE PANAMA (Estado independiente)", "REPUBLICA DE TRINIDAD Y TOBAGO",
+    "REPUBLICA DE LIBERIA (Estado independiente)",
+    "REPUBLICA DE SEYCHELLES (Estado independiente)", "REPUBLICA DE MAURICIO",
+    "REPUBLICA TUNECINA", "REPUBLICA DE MALDIVAS (Estado independiente)",
+    "REPUBLICA DE LAS ISLAS MARSHALL (Estado independiente)",
+    "REPUBLICA DE NAURU (Estado independiente)",
+    "REPUBLICA DEMOCRATICA SOCIALISTA DE SRI LANKA (Estado independiente)",
+    "REPUBLICA DE VANUATU", "REPUBLICA DEL YEMEN",
+    "REPUBLICA DE MALTA (Estado independiente)", "SANTA ELENA", "SANTA LUCIA",
+    "SAN VICENTE Y LAS GRANADINAS (Estado independiente)",
+    "SAMOA AMERICANA (Territorio no autónomo de los EEUU)", "SAMOA OCCIDENTAL",
+    "SERENISIMA REPUBLICA DE SAN MARINO (Estado independiente)", "SULTANATO DE OMAN",
+    "ARCHIPIELAGO DE SVALBARD", "TUVALU", "TRISTAN DA CUNHA", "TRIESTE (Italia)",
+    "TOKELAU", "ZONA LIBRE DE OSTRAVA (ciudad de la antigua Checoeslovaquia)",
+  ];
+
+  var TRIPLE_FRONTERA = [
+    "Ninguno/a", "PUERTO IGUAZÚ", "EL DORADO", "PUERTO VICTORIA", "PUERTO ESPERANZA",
+    "PUERTO WANDA", "PUERTO LIBERTAD", "COLONIA DELICIA", "COMANDANTE ANDRESITO",
+    "BERNARDO DE IRIGOYEN",
+  ];
+
+  var PRODUCTOS = [
+    "ACUERDOS FIDUCIARIOS", "APORTES DE CAPITAL", "ASISTENCIA", "BANCA ELECTRÓNICA",
+    "CAJA DE AHORROS", "CAJA DE SEGURIDAD", "CANCELACIÓN ANTICIPADA DE CRÉDITOS",
+    "CANCELACIÓN ANTICIPADA PÓLIZA DE SEGURO", "CANCELACIÓN DE HIPOTECA",
+    "CARTA DE CRÉDITO DE IMPORTACIÓN", "CAUCIONES DE TÍTULOS PÚBLICOS",
+    "CERTIFICACIÓN DE FIRMA", "CESIÓN DE DERECHOS", "CESIÓN DE DERECHOS DE FIDEICOMISOS",
+    "CHEQUES", "COBRANZAS PÓLIZAS DE SEGUROS", "COBRO DE GIROS", "COMERCIO EXTERIOR",
+    "COMPRA DE ORO", "COMPRA EN SUBASTA", "COMPRA/VENTA DE BONOS JUDICIALES",
+    "COMPRA/VENTA DE INMUEBLES", "COMPRA/VENTA DE PAQUETE ACCIONARIO",
+    "COMPRA/VENTA DE RODADOS", "COMPRA/VENTA DE TÍTULOS PÚBLICOS",
+    "COMPRA/VENTA TARJETAS TELEFÓNICAS", "COMPRA/VENTA VALORES NEGOCIABLES",
+    "COMPRA/VENTA DE MONEDA EXTRANJERA", "COMPRA/VENTA DE FÁBRICAS Y/O EMPRESAS",
+    "CONSTATACIÓN DE INTIMACIÓN DE PAGO", "CONVENIO CANCELACIÓN DEUDA Y PAGO",
+    "CONVENIO DÉBITO AUTOMÁTICO", "CUENTA COMITENTE", "CUENTA CORRIENTE",
+    "CUENTA CUSTODIA", "CUENTA TÍTULOS", "DONACIÓN", "EGRESO DE DÓLARES NO DECLARADOS",
+    "ESCRITURAS DE PODERES", "ESCRITURAS PROTOCOLARES", "FONDO COMÚN DE INVERSIÓN",
+    "IMPORTACIONES", "INGRESO DE DIVISAS", "INGRESOS NO DECLARADOS",
+    "INVERSIONES DE PORTAFOLIO EN EL EXTERIOR", "LIBERACIÓN DE HIPOTECA", "MUTUOS",
+    "OPERACIONES BURSATILES", "ORDEN DE PAGO", "P.PRENDARIO", "PAGARÉ", "PAGARÉ EXTERIOR",
+    "PAGO A PROVEEDORES", "PF REPROGRAMADO", "PLAZO FIJO", "PREMIO DE BINGO",
+    "PREMIO DE CASINOS", "PRÉSTAMO HIPOTECARIO", "PRÉSTAMO PERSONAL", "PRÉSTAMO PRENDARIO",
+    "PRÉSTAMOS DEL EXTERIOR", "RECAUDACIONES", "RECONOCIMIENTO DEUDA Y CESIÓN DERECHOS",
+    "REMESAS DE FONDOS", "REPATRIACIONES INVERSIONES DE RESIDENTES", "RESCATE DE PÓLIZAS",
+    "RETIROS EN EFECTIVO", "SEGURO DE CAPITALIZACIÓN", "SEGURO DE VIDA",
+    "SEGURO RESPONSABILIDAD CIVIL PROFESIONAL", "SEGUROS ACCIDENTES PERSONALES",
+    "SEGUROS DE RETIRO", "SERVICIOS DE RED", "TARJETAS DE CREDITO", "TENENCIA ACCIONARIA",
+    "TENENCIA DE MONEDA EXTRANJERA", "TÍTULOS COOPERATIVOS DE CAPITALIZACIÓN",
+    "TÍTULOS PÚBLICOS", "TRANFERENCIA", "TRANSFERENCIA DE DOMINIOS",
+    "TRANSFERENCIA TENTADA DESDE EL EXTERIOR", "TRANSFERENCIAS BANCARIAS DE FONDOS",
+    "TRANSFERENCIAS DE FONDOS", "TRASLADOS DE CAUDALES", "VENTA DE ACCIONES",
+    "VENTA DE ORO", "OTROS",
+  ];
+
+  var MONEDAS = [
+    "Peso Argentino", "Bolívar Venezolano", "Corona Checa", "Corona Danesa",
+    "Corona Noruega", "Corona Sueca", "Dinar Serbia", "Dólar Australiano",
+    "Dólar Canadiense", "Dólar Estadounidense", "Euro (Unidad Monetaria Europea)",
+    "Florín (Antillas Holandesas)", "Franco Suizo", "Guaraní Paraguayo", "Libra Esterlina",
+    "Nuevo Sol Peruano", "Peso Boliviano", "Peso Chileno", "Peso Colombiano",
+    "Peso Mexicano", "Peso Uruguayo", "Rand Sudafricano", "Real (Brasil)",
+    "Shekel (Israel)", "Yen (Japón)", "Yuan (Rep. Pop. de China)", "Otro/a",
+  ];
+
+  // Catálogo de países para nacionalidad, país de residencia y el "País" del
+  // cargo PEP: no es una lista taxativa de la UIF (no hay valores exactos que
+  // verificar contra el formulario), solo nombres de países en español para
+  // el desplegable. Espejo de core/paises/argentina/enums.py PAISES_MUNDO
+  // (mismo orden, mismos nombres — el backend ya traduce nacionalidad ahí).
   var PAISES_MUNDO = [
     "Afganistán", "Albania", "Alemania", "Andorra", "Angola", "Antigua y Barbuda",
     "Arabia Saudita", "Argelia", "Argentina", "Armenia", "Australia", "Austria",
@@ -98,22 +248,27 @@
   var ERR_FECHA = "Formato esperado: DD/MM/AAAA.";
   var soloDigitos = function (v) { return !v || /^\d+$/.test(String(v)); };
   var ERR_DIGITOS = "Solo dígitos.";
+  var esNumero = function (v) { return !v || /^\d+([.,]\d{1,2})?$/.test(String(v).trim()); };
+  var ERR_NUMERO = "Solo números (use punto para los decimales).";
 
   // Campos de domicilio y de vínculos: los comparten las dos variantes de la
   // sección 3, así que se arman a partir del prefijo del bloque.
   function camposDomicilio(base) {
     return [
       { grupoTitulo: "Datos de contacto y residencia" },
-      { path: base + ".calle", label: "Calle", type: "text" },
-      { path: base + ".nro", label: "Nro", type: "text",
+      { path: base + ".calle", label: "Calle", type: "text", required: true },
+      { path: base + ".nro", label: "Nro", type: "text", required: true,
         validate: soloDigitos, errMsg: ERR_DIGITOS },
       { path: base + ".piso", label: "Piso", type: "text" },
       { path: base + ".departamento", label: "Departamento", type: "text" },
-      { path: base + ".localidad", label: "Localidad", type: "text" },
+      { path: base + ".localidad", label: "Localidad", type: "text", required: true },
       { path: base + ".codigo_postal", label: "Código postal", type: "text" },
-      { path: base + ".provincia", label: "Provincia", type: "select", options: PROVINCIAS },
-      { path: base + ".provincia_otro", label: "Otro (provincia)", type: "text" },
-      { path: base + ".pais", label: "País", type: "text" },
+      { path: base + ".provincia", label: "Provincia", type: "select", options: PROVINCIAS,
+        required: true },
+      { path: base + ".provincia_otro", label: "Otro (provincia)", type: "text", required: true,
+        showIf: function (doc) { return obtener(doc, base + ".provincia") === "Otro/a"; } },
+      { path: base + ".pais", label: "País", type: "select", options: PAISES_MUNDO,
+        required: true },
       { path: base + ".email", label: "Email", type: "text",
         validate: function (v) { return !v || validarEmail(v); }, errMsg: "Email con formato inválido." },
       { path: base + ".prefijo", label: "Prefijo", type: "text",
@@ -127,16 +282,21 @@
     var esPep = function (doc) { return !!obtener(doc, base + ".es_pep"); };
     return [
       { grupoTitulo: "Vínculos y perfil transaccional" },
-      { path: base + ".paraiso_fiscal", label: "Relacionada con paraíso fiscal", type: "text", full: true },
-      { path: base + ".triple_frontera", label: "Relacionada con triple frontera", type: "text", full: true },
-      { path: base + ".es_cliente", label: "El reportado es cliente", type: "checkbox" },
+      { path: base + ".paraiso_fiscal", label: "Relacionada con paraíso fiscal", type: "select",
+        options: PARAISOS_FISCALES, full: true, required: true },
+      { path: base + ".triple_frontera", label: "Relacionada con triple frontera", type: "select",
+        options: TRIPLE_FRONTERA, full: true, required: true },
+      { path: base + ".es_cliente", label: "El reportado es cliente", type: "checkbox",
+        requiredTrue: true },
       { path: base + ".es_pep", label: "Es PEP", type: "checkbox" },
-      { path: base + ".relacion_hecho", label: "Relación con el hecho reportado", type: "select", options: RELACION_HECHO },
-      { path: base + ".actividad", label: "Actividad", type: "text" },
-      // Cargo y dependencia solo se piden (y son obligatorios) si es PEP.
+      { path: base + ".relacion_hecho", label: "Relación con el hecho reportado", type: "select",
+        options: RELACION_HECHO, required: true },
+      { path: base + ".actividad", label: "Actividad", type: "text", required: true },
+      // Cargo y dependencia solo se piden (y son obligatorios) si es PEP; país
+      // y "desempeña actualmente" son opcionales aun siendo PEP.
       { grupoTitulo: "Datos del cargo (obligatorios por ser PEP)", showIf: esPep },
-      { path: base + ".cargo", label: "Cargo", type: "text", showIf: esPep },
-      { path: base + ".dependencia", label: "Dependencia", type: "text", showIf: esPep },
+      { path: base + ".cargo", label: "Cargo", type: "text", required: true, showIf: esPep },
+      { path: base + ".dependencia", label: "Dependencia", type: "text", required: true, showIf: esPep },
       { path: base + ".pais_pep", label: "País", type: "select", options: PAISES_MUNDO, showIf: esPep },
       { path: base + ".desempena_actualmente", label: "Desempeña actualmente", type: "checkbox", showIf: esPep },
     ];
@@ -148,50 +308,62 @@
         titulo: "1 — Datos directos del ROS",
         campos: [
           { path: "datos_ros.exteriorizacion_voluntaria", label: "Exteriorización voluntaria Ley 26860",
-            type: "select", options: SI_NO },
-          { path: "datos_ros.tipo_instrumento", label: "Tipo de instrumento (solo si exteriorización = SI)",
-            type: "select", options: ["CEDIN", "BAADE", "PADE"] },
-          { path: "datos_ros.operacion", label: "Operación", type: "select", options: ["Realizada", "Tentada"] },
+            type: "select", options: SI_NO, required: true },
+          { path: "datos_ros.tipo_instrumento", label: "Tipo de instrumento", type: "select",
+            options: ["CEDIN", "BAADE", "PADE"], required: true,
+            showIf: function (doc) { return obtener(doc, "datos_ros.exteriorizacion_voluntaria") === "SI"; } },
+          { path: "datos_ros.operacion", label: "Operación", type: "select",
+            options: ["Realizada", "Tentada"], required: true },
           { path: "datos_ros.conoce_delito_precedente", label: "Conoce existencia de posible delito precedente",
-            type: "select", options: SI_NO },
+            type: "select", options: SI_NO, required: true },
         ],
       },
       {
-        titulo: "2 — Delito precedente (solo si se conoce uno)",
+        titulo: "2 — Delito precedente",
+        // Sección entera dependiente: solo aplica si el analista marcó que
+        // conoce un delito precedente (si cambia de opinión, se oculta de
+        // nuevo con todo y título).
+        showIf: function (doc) { return obtener(doc, "datos_ros.conoce_delito_precedente") === "SI"; },
         campos: [
-          { path: "delito_precedente.delito", label: "Delito", type: "text", full: true },
+          { path: "delito_precedente.delito", label: "Delito", type: "select",
+            options: DELITOS_PRECEDENTES, full: true, required: true },
           { path: "delito_precedente.fuente_informacion", label: "Fuente de la información", type: "select",
-            full: true, options: FUENTE_INFORMACION },
+            full: true, options: FUENTE_INFORMACION, required: true },
           // Obligatorios solo si fuente_informacion = "Artículo Periodístico".
           { path: "delito_precedente.fuente_articulo", label: "Fuente del artículo", type: "select",
-            options: FUENTE_ARTICULO, showIf: esArticuloPeriodistico },
+            options: FUENTE_ARTICULO, required: true, showIf: esArticuloPeriodistico },
           { path: "delito_precedente.fecha_articulo", label: "Fecha del artículo (DD/MM/AAAA)", type: "text",
-            validate: esFechaUIF, errMsg: ERR_FECHA, showIf: esArticuloPeriodistico },
+            validate: esFechaUIF, errMsg: ERR_FECHA, required: true, showIf: esArticuloPeriodistico },
           { path: "delito_precedente.detalle_origen_articulo", label: "Detalle origen del artículo",
-            type: "textarea", full: true, showIf: esArticuloPeriodistico },
+            type: "textarea", full: true, required: true, showIf: esArticuloPeriodistico },
         ],
       },
     ];
 
     // --- Sección 3: una sola variante, la que el backend marcó como "aplica" ---
+    // (decisión tomada UNA vez al generar el documento, según la nacionalidad
+    // consultada en la BD — no cambia si el analista edita el campo acá).
     if (obtener(doc, "persona_fisica.aplica")) {
       secciones.push({
         titulo: "3 — Datos de la persona física",
         campos: [
           { grupoTitulo: "Información personal" },
-          { path: "persona_fisica.apellido", label: "Apellido", type: "text" },
+          { path: "persona_fisica.apellido", label: "Apellido", type: "text", required: true },
           { path: "persona_fisica.segundo_apellido", label: "Segundo apellido", type: "text" },
-          { path: "persona_fisica.nombre", label: "Nombre", type: "text" },
+          { path: "persona_fisica.nombre", label: "Nombre", type: "text", required: true },
           { path: "persona_fisica.segundo_nombre", label: "Segundo nombre", type: "text" },
           { path: "persona_fisica.fecha_nacimiento", label: "Fecha de nacimiento (DD/MM/AAAA)", type: "text",
-            validate: esFechaUIF, errMsg: ERR_FECHA },
-          { path: "persona_fisica.nacionalidad", label: "Nacionalidad", type: "text" },
-          { path: "persona_fisica.sexo", label: "Sexo", type: "select", options: SEXO },
-          { path: "persona_fisica.estado_civil", label: "Estado civil", type: "select", options: ESTADO_CIVIL },
+            validate: esFechaUIF, errMsg: ERR_FECHA, required: true },
+          { path: "persona_fisica.nacionalidad", label: "Nacionalidad", type: "select",
+            options: PAISES_MUNDO, required: true },
+          { path: "persona_fisica.sexo", label: "Sexo", type: "select", options: SEXO, required: true },
+          { path: "persona_fisica.estado_civil", label: "Estado civil", type: "select",
+            options: ESTADO_CIVIL, required: true },
           { grupoTitulo: "Identificación" },
-          { path: "persona_fisica.tipo_documento", label: "Tipo documento", type: "select", options: TIPO_DOCUMENTO },
-          { path: "persona_fisica.numero_documento", label: "Número documento", type: "text" },
-          { path: "persona_fisica.cuit_cdi", label: "CUIT / CDI (XX-XXXXXXXX-X)", type: "text",
+          { path: "persona_fisica.tipo_documento", label: "Tipo documento", type: "select",
+            options: TIPO_DOCUMENTO, required: true },
+          { path: "persona_fisica.numero_documento", label: "Número documento", type: "text", required: true },
+          { path: "persona_fisica.cuit_cdi", label: "CUIT / CDI (XX-XXXXXXXX-X)", type: "text", required: true,
             validate: function (v) { return !v || /^\d{2}-\d{8}-\d$/.test(String(v)); },
             errMsg: "Formato esperado: XX-XXXXXXXX-X (11 dígitos)." },
         ].concat(camposDomicilio("persona_fisica"), camposVinculos("persona_fisica")),
@@ -206,18 +378,19 @@
     if (obtener(doc, "persona_fisica_extranjera.aplica")) {
       var extranjera = [
         { grupoTitulo: "Información personal" },
-        { path: "persona_fisica_extranjera.apellido", label: "Apellido", type: "text" },
-        { path: "persona_fisica_extranjera.nombre", label: "Nombre", type: "text" },
+        { path: "persona_fisica_extranjera.apellido", label: "Apellido", type: "text", required: true },
+        { path: "persona_fisica_extranjera.nombre", label: "Nombre", type: "text", required: true },
         { path: "persona_fisica_extranjera.fecha_nacimiento", label: "Fecha de nacimiento (DD/MM/AAAA)",
-          type: "text", validate: esFechaUIF, errMsg: ERR_FECHA },
-        { path: "persona_fisica_extranjera.nacionalidad", label: "Nacionalidad", type: "text" },
+          type: "text", validate: esFechaUIF, errMsg: ERR_FECHA, required: true },
+        { path: "persona_fisica_extranjera.nacionalidad", label: "Nacionalidad", type: "select",
+          options: PAISES_MUNDO, required: true },
         { path: "persona_fisica_extranjera.estado_civil", label: "Estado civil", type: "select",
-          options: ["Ninguno/a"].concat(ESTADO_CIVIL) },
+          options: ["Ninguno/a"].concat(ESTADO_CIVIL), required: true },
         { grupoTitulo: "Identificación" },
         { path: "persona_fisica_extranjera.tipo_identificador_tributario",
-          label: "Tipo identificador tributario", type: "text" },
+          label: "Tipo identificador tributario", type: "text", required: true },
         { path: "persona_fisica_extranjera.numero_identificacion_tributaria",
-          label: "Número identificación tributaria", type: "text" },
+          label: "Número identificación tributaria", type: "text", required: true },
       ].concat(
         camposDomicilio("persona_fisica_extranjera"),
         camposVinculos("persona_fisica_extranjera")
@@ -235,9 +408,9 @@
       titulo: "4 — Operaciones y productos",
       campos: [
         { path: "operaciones.inicio", label: "Inicio de la operación reportada (DD/MM/AAAA)", type: "text",
-          validate: esFechaUIF, errMsg: ERR_FECHA },
+          validate: esFechaUIF, errMsg: ERR_FECHA, required: true },
         { path: "operaciones.fin", label: "Fin de la operación reportada (DD/MM/AAAA)", type: "text",
-          validate: esFechaUIF, errMsg: ERR_FECHA },
+          validate: esFechaUIF, errMsg: ERR_FECHA, required: true },
 
         // Lugares donde se producen los hechos: hasta tres, y de ahí en adelante
         // el texto libre de domicilios adicionales.
@@ -247,10 +420,14 @@
           textoAgregar: "+ Agregar otra operación",
           textoExtra: "+ Agregar más direcciones",
           subcampos: [
-            { campo: "localidad", label: "Localidad", type: "text" },
-            { campo: "provincia", label: "Provincia", type: "select", options: PROVINCIAS },
-            { campo: "provincia_otro", label: "Otro (provincia)", type: "text" },
-            { campo: "pais", label: "País donde se producen los hechos", type: "text" },
+            { campo: "localidad", label: "Localidad", type: "text", required: true },
+            { campo: "provincia", label: "Provincia", type: "select", options: PROVINCIAS, required: true },
+            { campo: "provincia_otro", label: "Otro (provincia)", type: "text", required: true,
+              // showIf de subgrupo: recibe (doc, rutaDelItem), no solo (doc),
+              // porque mira OTRO campo de ese MISMO ítem repetido.
+              showIf: function (doc, rutaItem) { return obtener(doc, rutaItem + ".provincia") === "Otro/a"; } },
+            { campo: "pais", label: "País donde se producen los hechos", type: "select",
+              options: PAISES_MUNDO, required: true },
             { campo: "es_zona_frontera", label: "Es zona de frontera", type: "checkbox" },
           ],
           extra: {
@@ -262,40 +439,55 @@
 
         { grupoTitulo: "Perfil de la operación" },
         { path: "operaciones.paraiso_fiscal", label: "Operación relacionada con paraíso fiscal",
-          type: "text", full: true },
+          type: "select", options: PARAISOS_FISCALES, full: true, required: true },
         { path: "operaciones.triple_frontera", label: "Operación relacionada con triple frontera",
-          type: "text", full: true },
-        { path: "operaciones.tipo_inusualidad", label: "Tipo de inusualidad", type: "text" },
+          type: "select", options: TRIPLE_FRONTERA, full: true, required: true },
+        { path: "operaciones.tipo_inusualidad", label: "Tipo de inusualidad", type: "text", required: true },
         { path: "operaciones.relacion_producto", label: "Relación del producto con el hecho reportado",
-          type: "select", options: RELACION_PRODUCTO },
+          type: "select", options: RELACION_PRODUCTO, required: true },
 
         { grupoTitulo: "Producto" },
-        { path: "operaciones.producto", label: "Producto donde se registró la inusualidad", type: "text" },
-        { path: "operaciones.otro_producto", label: "Otro producto (si el anterior es OTROS)", type: "text" },
-        { path: "operaciones.numero_identificacion", label: "Número de identificación", type: "text" },
-        { path: "operaciones.moneda_origen", label: "Moneda de origen del producto", type: "text" },
-        { path: "operaciones.moneda_otro", label: "Otro (moneda)", type: "text" },
-        { path: "operaciones.monto_moneda_origen", label: "Monto reportado en moneda de origen", type: "text" },
-        { path: "operaciones.monto_pesos", label: "Monto reportado en pesos argentinos", type: "text" },
-        { path: "operaciones.monto_letras", label: "Monto en letras", type: "textarea", full: true },
+        { path: "operaciones.producto", label: "Producto donde se registró la inusualidad", type: "select",
+          options: PRODUCTOS, required: true },
+        { path: "operaciones.otro_producto", label: "Otro producto", type: "text", required: true,
+          showIf: function (doc) { return obtener(doc, "operaciones.producto") === "OTROS"; } },
+        { path: "operaciones.numero_identificacion", label: "Número de identificación", type: "text",
+          required: true },
+        { path: "operaciones.moneda_origen", label: "Moneda de origen del producto", type: "select",
+          options: MONEDAS, required: true },
+        { path: "operaciones.moneda_otro", label: "Otro (moneda)", type: "text", required: true,
+          showIf: function (doc) { return obtener(doc, "operaciones.moneda_origen") === "Otro/a"; } },
+        { path: "operaciones.monto_moneda_origen", label: "Monto reportado en moneda de origen", type: "text",
+          required: true, validate: esNumero, errMsg: ERR_NUMERO },
+        { path: "operaciones.monto_pesos", label: "Monto reportado en pesos argentinos", type: "text",
+          required: true, validate: esNumero, errMsg: ERR_NUMERO },
+        { path: "operaciones.monto_letras", label: "Monto en letras", type: "textarea", full: true,
+          required: true },
 
         { grupoTitulo: "Efectivo y moneda virtual" },
         { path: "operaciones.existe_efectivo_o_virtual",
-          label: "Existe porcentaje operado en efectivo o moneda virtual", type: "select", options: SI_NO },
-        { path: "operaciones.porcentaje_efectivo", label: "Porcentaje en efectivo", type: "text" },
-        { path: "operaciones.porcentaje_virtual", label: "Porcentaje en moneda virtual", type: "text" },
+          label: "Existe porcentaje operado en efectivo o moneda virtual", type: "select", options: SI_NO,
+          required: true },
+        { path: "operaciones.porcentaje_efectivo", label: "Porcentaje en efectivo", type: "text",
+          validate: esNumero, errMsg: ERR_NUMERO,
+          showIf: function (doc) { return obtener(doc, "operaciones.existe_efectivo_o_virtual") === "SI"; } },
+        { path: "operaciones.porcentaje_virtual", label: "Porcentaje en moneda virtual", type: "text",
+          validate: esNumero, errMsg: ERR_NUMERO,
+          showIf: function (doc) { return obtener(doc, "operaciones.existe_efectivo_o_virtual") === "SI"; } },
 
         { grupoTitulo: "Señales y descripciones" },
         { path: "operaciones.senales_alerta", label: "Señales de alerta", type: "bloques", full: true,
           maxPorBloque: 300 },
         { path: "operaciones.descripcion_operatoria", label: "Descripción de la operatoria",
-          type: "textarea", full: true },
+          type: "textarea", full: true, required: true },
         { path: "operaciones.descripcion_analisis",
-          label: "Descripción del análisis efectuado por el sujeto obligado", type: "textarea", full: true },
+          label: "Descripción del análisis efectuado por el sujeto obligado", type: "textarea", full: true,
+          required: true },
         { path: "operaciones.documentacion_respaldo",
-          label: "Informe de documentación de respaldo que posee", type: "textarea", full: true },
+          label: "Informe de documentación de respaldo que posee", type: "textarea", full: true,
+          required: true },
         { path: "operaciones.conclusiones", label: "Informe de conclusiones para emitir reporte",
-          type: "textarea", full: true },
+          type: "textarea", full: true, required: true },
       ],
     });
 

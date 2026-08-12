@@ -263,8 +263,9 @@
     .campo{ margin-bottom:12px; }
     .campo label{ margin:8px 0 4px; }
     .campo .contador{ font-weight:400; text-transform:none; color:#8493a3; float:right; }
+    .req-marca{ color:var(--accent); }
     .campo-err{ color:var(--accent); font-size:11.5px; margin-top:4px; display:none; }
-    .campo.invalid input, .campo.invalid textarea{ border-color:var(--accent); background:#fef8f7; }
+    .campo.invalid input, .campo.invalid textarea, .campo.invalid select{ border-color:var(--accent); background:#fef8f7; }
     .campo.invalid .campo-err{ display:block; }
     .campo-check{ display:flex; align-items:center; gap:8px; margin:10px 0 6px; }
     .campo-check input{ width:auto; }
