@@ -269,6 +269,13 @@
     .campo-err{ color:var(--accent); font-size:11.5px; margin-top:4px; display:none; }
     .campo.invalid input, .campo.invalid textarea, .campo.invalid select{ border-color:var(--accent); background:#fef8f7; }
     .campo.invalid .campo-err{ display:block; }
+    /* Campo deshabilitado (p. ej. calculado por código, no editable a mano):
+       más transparente para que se note que no admite edición manual. */
+    .campo input:disabled, .campo textarea:disabled, .campo select:disabled{ opacity:.55; cursor:not-allowed; }
+    /* Campo condicional con reservaEspacio: sigue ocupando su celda del grid
+       (para que el campo siguiente no se corra de lugar) pero no se ve ni se
+       puede interactuar con él mientras no aplique. */
+    .campo-invisible{ visibility:hidden; }
     .campo-check{ display:flex; align-items:center; gap:8px; margin:10px 0 6px; }
     .campo-check input{ width:auto; }
     .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }

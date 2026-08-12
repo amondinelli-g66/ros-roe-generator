@@ -248,8 +248,93 @@
   var ERR_FECHA = "Formato esperado: DD/MM/AAAA.";
   var soloDigitos = function (v) { return !v || /^\d+$/.test(String(v)); };
   var ERR_DIGITOS = "Solo dígitos.";
-  var esNumero = function (v) { return !v || /^\d+([.,]\d{1,2})?$/.test(String(v).trim()); };
-  var ERR_NUMERO = "Solo números (use punto para los decimales).";
+  // Montos: la UIF no admite puntos ni comas (ni miles ni decimales) — si hay
+  // centavos, se redondean al entero más cercano antes de completar el campo.
+  var esMontoEntero = soloDigitos;
+  var ERR_MONTO = "Solo dígitos, sin puntos ni comas (si hay centavos, redondee al entero más cercano).";
+  var esPorcentaje = function (v) {
+    if (!v) return true;
+    var s = String(v).trim();
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return false;
+    var n = Number(s);
+    return n >= 0 && n <= 100;
+  };
+  var ERR_PORCENTAJE = "Debe ser un número entre 0 y 100.";
+
+  // --- Monto en letras: espejo en JS de monto_en_letras() del backend -------
+  // (core/paises/argentina/ros/fields.py) — el campo se recalcula en vivo acá
+  // porque el analista puede corregir "Monto reportado en pesos argentinos" en
+  // el modal, y el texto en letras tiene que seguir ese cambio sin volver a
+  // generar el documento. Escala LARGA (la del español): 10^6 es "millón" y
+  // 10^12 es "billón"; 10^9 no es una escala propia, es "mil millones".
+  var UNIDADES_LETRAS = [
+    "cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho",
+    "nueve", "diez", "once", "doce", "trece", "catorce", "quince", "dieciséis",
+    "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno", "veintidós",
+    "veintitrés", "veinticuatro", "veinticinco", "veintiséis", "veintisiete",
+    "veintiocho", "veintinueve",
+  ];
+  var DECENAS_LETRAS = ["", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
+  var CENTENAS_LETRAS = [
+    "", "ciento", "doscientos", "trescientos", "cuatrocientos",
+    "quinientos", "seiscientos", "setecientos", "ochocientos", "novecientos",
+  ];
+
+  function centenasEnLetras(n) {
+    if (n < 30) return UNIDADES_LETRAS[n];
+    if (n < 100) {
+      var d = Math.floor(n / 10), u = n % 10;
+      return DECENAS_LETRAS[d] + (u ? " y " + UNIDADES_LETRAS[u] : "");
+    }
+    if (n === 100) return "cien";
+    var c = Math.floor(n / 100), resto = n % 100;
+    return CENTENAS_LETRAS[c] + (resto ? " " + centenasEnLetras(resto) : "");
+  }
+
+  function apocopar(texto) {
+    if (texto === "uno") return "un";
+    if (texto === "veintiuno") return "veintiún";
+    if (texto.slice(-4) === " uno") return texto.slice(0, -4) + " un";
+    if (texto.slice(-10) === " veintiuno") return texto.slice(0, -10) + " veintiún";
+    return texto;
+  }
+
+  function milesEnLetras(n) {
+    if (n < 1000) return centenasEnLetras(n);
+    var miles = Math.floor(n / 1000), resto = n % 1000;
+    var prefijo = miles === 1 ? "mil" : apocopar(centenasEnLetras(miles)) + " mil";
+    return prefijo + (resto ? " " + centenasEnLetras(resto) : "");
+  }
+
+  function montoEnLetras(valor) {
+    if (valor === "" || valor == null) return "";
+    var n = Math.round(Number(valor));
+    if (!isFinite(n) || isNaN(n) || n < 0) return "";
+    var moneda = n === 1 ? "peso argentino" : "pesos argentinos";
+    if (n === 0) return "cero " + moneda;
+
+    var partes = [];
+    var billones = Math.floor(n / 1e12), resto = n % 1e12;
+    if (billones) partes.push(apocopar(milesEnLetras(billones)) + " " + (billones === 1 ? "billón" : "billones"));
+    var millones = Math.floor(resto / 1e6);
+    resto = resto % 1e6;
+    if (millones) partes.push(apocopar(milesEnLetras(millones)) + " " + (millones === 1 ? "millón" : "millones"));
+    if (resto) partes.push(milesEnLetras(resto));
+
+    var texto = apocopar(partes.join(" ").trim());
+    return (texto + " " + moneda).trim();
+  }
+
+  // "Monto en letras" no lo edita la persona (queda disabled en el modal, ver
+  // camposArgentina más abajo): lo recalcula el código cada vez que cambia
+  // "Monto reportado en pesos argentinos".
+  function actualizarMontoLetras(doc) {
+    var letras = montoEnLetras(obtener(doc, "operaciones.monto_pesos"));
+    if (!doc.operaciones) doc.operaciones = {};
+    doc.operaciones.monto_letras = letras;
+    var input = document.getElementById("f_operaciones.monto_letras");
+    if (input) input.value = letras;
+  }
 
   // Campos de domicilio y de vínculos: los comparten las dos variantes de la
   // sección 3, así que se arman a partir del prefijo del bloque.
@@ -265,7 +350,11 @@
       { path: base + ".codigo_postal", label: "Código postal", type: "text" },
       { path: base + ".provincia", label: "Provincia", type: "select", options: PROVINCIAS,
         required: true },
+      // reservaEspacio: mantiene su lugar junto a "Provincia" aunque no aplique,
+      // para que "País" quede siempre en la fila de abajo (no se corre según si
+      // se eligió "Otro/a" en provincia).
       { path: base + ".provincia_otro", label: "Otro (provincia)", type: "text", required: true,
+        reservaEspacio: true,
         showIf: function (doc) { return obtener(doc, base + ".provincia") === "Otro/a"; } },
       { path: base + ".pais", label: "País", type: "select", options: PAISES_MUNDO,
         required: true },
@@ -286,8 +375,9 @@
         options: PARAISOS_FISCALES, full: true, required: true },
       { path: base + ".triple_frontera", label: "Relacionada con triple frontera", type: "select",
         options: TRIPLE_FRONTERA, full: true, required: true },
-      { path: base + ".es_cliente", label: "El reportado es cliente", type: "checkbox",
-        requiredTrue: true },
+      // No es obligatorio: se puede reportar a alguien que NO es cliente
+      // (se desmarca la casilla).
+      { path: base + ".es_cliente", label: "El reportado es cliente", type: "checkbox" },
       { path: base + ".es_pep", label: "Es PEP", type: "checkbox" },
       { path: base + ".relacion_hecho", label: "Relación con el hecho reportado", type: "select",
         options: RELACION_HECHO, required: true },
@@ -309,8 +399,11 @@
         campos: [
           { path: "datos_ros.exteriorizacion_voluntaria", label: "Exteriorización voluntaria Ley 26860",
             type: "select", options: SI_NO, required: true },
+          // reservaEspacio: mantiene su lugar junto a "Exteriorización..." aunque
+          // no aplique, para que "Operación" y "Conoce delito precedente" queden
+          // siempre en la fila de abajo (no se corren según el valor de Ley 26860).
           { path: "datos_ros.tipo_instrumento", label: "Tipo de instrumento", type: "select",
-            options: ["CEDIN", "BAADE", "PADE"], required: true,
+            options: ["CEDIN", "BAADE", "PADE"], required: true, reservaEspacio: true,
             showIf: function (doc) { return obtener(doc, "datos_ros.exteriorizacion_voluntaria") === "SI"; } },
           { path: "datos_ros.operacion", label: "Operación", type: "select",
             options: ["Realizada", "Tentada"], required: true },
@@ -422,7 +515,11 @@
           subcampos: [
             { campo: "localidad", label: "Localidad", type: "text", required: true },
             { campo: "provincia", label: "Provincia", type: "select", options: PROVINCIAS, required: true },
+            // reservaEspacio: mantiene su lugar junto a "Provincia" aunque no
+            // aplique, para que "País donde se producen los hechos" quede
+            // siempre en la fila de abajo.
             { campo: "provincia_otro", label: "Otro (provincia)", type: "text", required: true,
+              reservaEspacio: true,
               // showIf de subgrupo: recibe (doc, rutaDelItem), no solo (doc),
               // porque mira OTRO campo de ese MISMO ítem repetido.
               showIf: function (doc, rutaItem) { return obtener(doc, rutaItem + ".provincia") === "Otro/a"; } },
@@ -458,21 +555,22 @@
         { path: "operaciones.moneda_otro", label: "Otro (moneda)", type: "text", required: true,
           showIf: function (doc) { return obtener(doc, "operaciones.moneda_origen") === "Otro/a"; } },
         { path: "operaciones.monto_moneda_origen", label: "Monto reportado en moneda de origen", type: "text",
-          required: true, validate: esNumero, errMsg: ERR_NUMERO },
+          required: true, validate: esMontoEntero, errMsg: ERR_MONTO },
         { path: "operaciones.monto_pesos", label: "Monto reportado en pesos argentinos", type: "text",
-          required: true, validate: esNumero, errMsg: ERR_NUMERO },
+          required: true, validate: esMontoEntero, errMsg: ERR_MONTO,
+          alCambiar: actualizarMontoLetras },
         { path: "operaciones.monto_letras", label: "Monto en letras", type: "textarea", full: true,
-          required: true },
+          required: true, disabledIf: function () { return true; } },
 
         { grupoTitulo: "Efectivo y moneda virtual" },
         { path: "operaciones.existe_efectivo_o_virtual",
           label: "Existe porcentaje operado en efectivo o moneda virtual", type: "select", options: SI_NO,
           required: true },
         { path: "operaciones.porcentaje_efectivo", label: "Porcentaje en efectivo", type: "text",
-          validate: esNumero, errMsg: ERR_NUMERO,
+          validate: esPorcentaje, errMsg: ERR_PORCENTAJE,
           showIf: function (doc) { return obtener(doc, "operaciones.existe_efectivo_o_virtual") === "SI"; } },
         { path: "operaciones.porcentaje_virtual", label: "Porcentaje en moneda virtual", type: "text",
-          validate: esNumero, errMsg: ERR_NUMERO,
+          validate: esPorcentaje, errMsg: ERR_PORCENTAJE,
           showIf: function (doc) { return obtener(doc, "operaciones.existe_efectivo_o_virtual") === "SI"; } },
 
         { grupoTitulo: "Descripciones" },

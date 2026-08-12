@@ -194,7 +194,20 @@
   }
 
   function actualizarVisibilidad(wrapper, campo, doc) {
-    if (campo.showIf) wrapper.hidden = !campo.showIf(doc);
+    if (campo.showIf) {
+      var visible = campo.showIf(doc);
+      // reservaEspacio: el campo ocupa SIEMPRE su celda del grid (aunque no
+      // aplique), en vez de colapsar y correr al campo siguiente a su lugar.
+      // Se usa cuando el campo condicional comparte fila con otro fijo (p. ej.
+      // "Tipo de instrumento" al lado de "Exteriorización...") y el resto del
+      // formulario necesita que esa fila de abajo no se mueva según el valor.
+      if (campo.reservaEspacio) {
+        wrapper.hidden = false;
+        wrapper.classList.toggle("campo-invisible", !visible);
+      } else {
+        wrapper.hidden = !visible;
+      }
+    }
     var input = wrapper.querySelector("input,textarea,select");
     if (input && campo.disabledIf) input.disabled = !!campo.disabledIf(doc);
   }
@@ -218,6 +231,7 @@
   function estaOculto(elemento) {
     for (var n = elemento; n && n !== body; n = n.parentElement) {
       if (n.hidden) return true;
+      if (n.classList && n.classList.contains("campo-invisible")) return true;
     }
     return false;
   }
@@ -277,6 +291,12 @@
         var contador = label.querySelector(".contador");
         if (contador) contador.textContent = "(" + input.value.length + " / " + (campo.min ? campo.min + "–" : "") + campo.max + ")";
       }
+
+      // Hook del esquema del país (no del modal): un campo puede derivar el
+      // valor de OTRO (p. ej. "Monto en letras" a partir de "Monto en pesos").
+      // Corre ANTES de revisarCondicionales para que el campo derivado quede
+      // validado con su valor nuevo, no con el anterior.
+      if (campo.alCambiar) campo.alCambiar(doc, ctx);
 
       actualizarValidez(wrapper, campo, doc);
 
