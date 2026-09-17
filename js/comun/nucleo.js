@@ -50,6 +50,7 @@
   var lastPing = 0;
   var sesionActiva = false;
   var wizardListo = false;
+  var estadoTimer = null;
 
   // --------------------------------------------------------------------- //
   // Backend + token de sesión
@@ -267,6 +268,59 @@
   }
 
   // --------------------------------------------------------------------- //
+  // Estado de la fuente de datos (indicador de la barra superior)
+  // --------------------------------------------------------------------- //
+  // Los estados los decide el backend (/estado-fuente, ver core.comun.redshift_db):
+  // conectado | pausado | iniciando | no_disponible | sin_permiso | error |
+  // deshabilitado. "verificando" es solo del frontend, mientras espera respuesta.
+  // Cada uno tiene su clase CSS estado-<nombre>, que define el color del punto.
+  var ESTADOS_CONOCIDOS = ["conectado", "pausado", "iniciando", "no_disponible",
+                           "sin_permiso", "error", "deshabilitado", "verificando"];
+  var ESTADO_REFRESCO_MS = 60000;
+
+  function pintarEstadoFuente(estado, etiqueta, detalle) {
+    var caja = $("estado-fuente");
+    var txt = $("estado-fuente-texto");
+    if (!caja || !txt) return;
+    if (ESTADOS_CONOCIDOS.indexOf(estado) === -1) estado = "error";
+    ESTADOS_CONOCIDOS.forEach(function (e) { caja.classList.remove("estado-" + e); });
+    caja.classList.add("estado-" + estado);
+    txt.textContent = etiqueta || estado;
+    caja.title = detalle || etiqueta || "";
+  }
+
+  function refrescarEstadoFuente() {
+    if (!sesionActiva) return;
+    pintarEstadoFuente("verificando", "Verificando…",
+                       "Consultando el estado de la fuente de datos…");
+    api("/estado-fuente").then(function (r) {
+      if (manejar401(r)) throw new Error("401");
+      return r.json();
+    }).then(function (d) {
+      d = d || {};
+      if (!d.estado) {
+        pintarEstadoFuente("error", "Sin conexión",
+                           "El backend no informó el estado de la fuente de datos.");
+        return;
+      }
+      var destino = d.destino ? "\n" + d.destino : "";
+      pintarEstadoFuente(d.estado, d.etiqueta, (d.detalle || "") + destino);
+    }).catch(function (e) {
+      if (e && e.message === "401") return;   // ya lo maneja manejar401
+      // Sin respuesta del backend no se puede saber cómo está el clúster: se
+      // informa la falta de conexión, no un clúster caído (no es lo mismo).
+      pintarEstadoFuente("error", "Sin conexión",
+                         "No se pudo consultar al servidor de GEREO.");
+    });
+  }
+
+  function iniciarEstadoFuente() {
+    refrescarEstadoFuente();
+    if (estadoTimer) clearInterval(estadoTimer);
+    estadoTimer = setInterval(refrescarEstadoFuente, ESTADO_REFRESCO_MS);
+  }
+
+  // --------------------------------------------------------------------- //
   // Entrar a la app (autenticado)
   // --------------------------------------------------------------------- //
   function entrarApp(user) {
@@ -291,10 +345,12 @@
       }
     }
     iniciarInactividad();
+    iniciarEstadoFuente();
   }
 
   function cerrarSesion(expirada) {
     sesionActiva = false;
+    if (estadoTimer) { clearInterval(estadoTimer); estadoTimer = null; }
     if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
     api("/auth/logout", { method: "POST" }).catch(function () {});
     clearToken();
@@ -354,6 +410,7 @@
   GEREO.registrarFormulario = registrarFormulario;
   GEREO.formularioRegistrado = formularioRegistrado;
   GEREO.formulariosRegistrados = formulariosRegistrados;
+  GEREO.refrescarEstadoFuente = refrescarEstadoFuente;
 
   // --------------------------------------------------------------------- //
   // Wire-up de botones fuera del wizard

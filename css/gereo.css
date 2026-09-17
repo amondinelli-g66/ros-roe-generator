@@ -117,7 +117,37 @@
       padding:16px 28px; gap:18px; }
     .topbar .brand-icon{ width:42px; height:42px; }
     .topbar .brand-word{ font-size:23px; letter-spacing:.3px; color:#fff; }
-    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; margin-left:auto; }
+    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; }
+
+    /* ---- Estado de la fuente de datos (clúster Redshift) ---- */
+    /* El margin-left:auto vive acá —antes estaba en .topbar-divider— para que el
+       indicador encabece el grupo de la derecha: [marca] ... [estado] | [cuenta]. */
+    .estado-fuente{ display:flex; align-items:center; gap:8px; margin-left:auto; flex:none;
+      font-size:12.5px; font-weight:600; letter-spacing:.2px; white-space:nowrap;
+      padding:6px 12px; border-radius:999px; cursor:default;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+      color:rgba(255,255,255,.82); transition:color .2s ease, border-color .2s ease; }
+    .estado-fuente .estado-punto{ width:8px; height:8px; border-radius:50%; flex:none;
+      background:currentColor; box-shadow:0 0 0 3px rgba(255,255,255,.10); }
+
+    /* Un color por estado (el punto hereda el color del texto vía currentColor). */
+    .estado-fuente.estado-conectado{ color:#4ADE80; border-color:rgba(74,222,128,.34); }
+    .estado-fuente.estado-pausado{ color:#FBBF24; border-color:rgba(251,191,36,.34); }
+    .estado-fuente.estado-iniciando{ color:#38BDF8; border-color:rgba(56,189,248,.34); }
+    .estado-fuente.estado-verificando{ color:rgba(255,255,255,.66); }
+    .estado-fuente.estado-deshabilitado{ color:#A5B4FC; border-color:rgba(165,180,252,.30); }
+    .estado-fuente.estado-no_disponible,
+    .estado-fuente.estado-sin_permiso,
+    .estado-fuente.estado-error{ color:#F87171; border-color:rgba(248,113,113,.36); }
+
+    /* Mientras se verifica o el clúster arranca, el punto late: deja claro que es
+       un estado en curso y no uno definitivo. */
+    .estado-fuente.estado-verificando .estado-punto,
+    .estado-fuente.estado-iniciando .estado-punto{ animation:estado-latido 1.3s ease-in-out infinite; }
+    @keyframes estado-latido{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+    @media (prefers-reduced-motion: reduce){
+      .estado-fuente .estado-punto{ animation:none !important; }
+    }
     .topbar .user-section{ display:flex; align-items:center; gap:14px; font-size:13px;
       color:rgba(255,255,255,.72); }
     .topbar .user-section button{ width:auto; margin:0; background:transparent;
