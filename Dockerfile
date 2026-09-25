@@ -14,11 +14,16 @@ FROM nginx:1.27-alpine
 # fija el UID/GID 10001 explícito para que el proceso que atiende peticiones no
 # sea un usuario heredado de la imagen base. El puerto es 8080 y no 80 porque
 # un usuario sin privilegios no puede escuchar por debajo de 1024.
+#
+# Se hace chown de /var/cache/nginx -directorios de trabajo de nginx- pero NO de
+# /var/run: ese es un symlink a /run, que el runtime monta como un tmpfs NUEVO
+# propiedad de root en cada arranque, asi que el chown del build no sobrevive.
+# Por eso el pid vive en /tmp (ver nginx.conf).
 RUN deluser nginx 2>/dev/null; \
     addgroup -g 10001 gereo && \
     adduser -D -H -u 10001 -G gereo -s /sbin/nologin gereo && \
-    mkdir -p /var/cache/nginx /var/run && \
-    chown -R 10001:10001 /var/cache/nginx /var/run /usr/share/nginx/html
+    mkdir -p /var/cache/nginx && \
+    chown -R 10001:10001 /var/cache/nginx /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/nginx.conf
 
