@@ -83,6 +83,11 @@
     .soc{ padding:18px 10px; font-size:16px; }
     .choice.sel{ border-color:var(--orange); background:var(--orange-light);
            box-shadow:0 0 0 3px rgba(255,171,64,.28); }
+    /* Opción que el documento no admite (p. ej. B2B en el ROS de Argentina):
+       se ve apagada y no responde, pero sigue visible para que se entienda que
+       existe y que hoy no está disponible. */
+    .choice.no-admitido{ opacity:.4; cursor:not-allowed; filter:grayscale(1); }
+    .choice.no-admitido:hover{ background:#fff; border-color:var(--line); box-shadow:none; }
     .hint{ font-size:12px; color:#7a8896; margin-top:5px; }
     #vinc-zona{ margin-top:18px; }
     .btn-sec{ width:auto; margin-top:0; background:#eef3f9; color:var(--navy2); border:1px solid var(--line);
@@ -112,7 +117,37 @@
       padding:16px 28px; gap:18px; }
     .topbar .brand-icon{ width:42px; height:42px; }
     .topbar .brand-word{ font-size:23px; letter-spacing:.3px; color:#fff; }
-    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; margin-left:auto; }
+    .topbar-divider{ width:1px; height:26px; background:rgba(255,255,255,.22); flex:none; }
+
+    /* ---- Estado de la fuente de datos (clúster Redshift) ---- */
+    /* El margin-left:auto vive acá —antes estaba en .topbar-divider— para que el
+       indicador encabece el grupo de la derecha: [marca] ... [estado] | [cuenta]. */
+    .estado-fuente{ display:flex; align-items:center; gap:8px; margin-left:auto; flex:none;
+      font-size:12.5px; font-weight:600; letter-spacing:.2px; white-space:nowrap;
+      padding:6px 12px; border-radius:999px; cursor:default;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+      color:rgba(255,255,255,.82); transition:color .2s ease, border-color .2s ease; }
+    .estado-fuente .estado-punto{ width:8px; height:8px; border-radius:50%; flex:none;
+      background:currentColor; box-shadow:0 0 0 3px rgba(255,255,255,.10); }
+
+    /* Un color por estado (el punto hereda el color del texto vía currentColor). */
+    .estado-fuente.estado-conectado{ color:#4ADE80; border-color:rgba(74,222,128,.34); }
+    .estado-fuente.estado-pausado{ color:#FBBF24; border-color:rgba(251,191,36,.34); }
+    .estado-fuente.estado-iniciando{ color:#38BDF8; border-color:rgba(56,189,248,.34); }
+    .estado-fuente.estado-verificando{ color:rgba(255,255,255,.66); }
+    .estado-fuente.estado-deshabilitado{ color:#A5B4FC; border-color:rgba(165,180,252,.30); }
+    .estado-fuente.estado-no_disponible,
+    .estado-fuente.estado-sin_permiso,
+    .estado-fuente.estado-error{ color:#F87171; border-color:rgba(248,113,113,.36); }
+
+    /* Mientras se verifica o el clúster arranca, el punto late: deja claro que es
+       un estado en curso y no uno definitivo. */
+    .estado-fuente.estado-verificando .estado-punto,
+    .estado-fuente.estado-iniciando .estado-punto{ animation:estado-latido 1.3s ease-in-out infinite; }
+    @keyframes estado-latido{ 0%,100%{ opacity:1; } 50%{ opacity:.25; } }
+    @media (prefers-reduced-motion: reduce){
+      .estado-fuente .estado-punto{ animation:none !important; }
+    }
     .topbar .user-section{ display:flex; align-items:center; gap:14px; font-size:13px;
       color:rgba(255,255,255,.72); }
     .topbar .user-section button{ width:auto; margin:0; background:transparent;
@@ -253,14 +288,24 @@
       letter-spacing:.2px; white-space:nowrap; }
     .grupo-titulo{ font-size:12px; font-weight:700; color:var(--navy2); text-transform:uppercase;
       letter-spacing:.4px; margin:16px 0 4px; }
+    .grupo-titulo-row{ display:flex; justify-content:space-between; align-items:center; }
+    .grupo-titulo-row .grupo-titulo{ margin:16px 0 4px; }
     .campos-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
     .campos-grid .campo.full{ grid-column:1 / -1; }
     .campo{ margin-bottom:12px; }
     .campo label{ margin:8px 0 4px; }
     .campo .contador{ font-weight:400; text-transform:none; color:#8493a3; float:right; }
+    .req-marca{ color:var(--accent); }
     .campo-err{ color:var(--accent); font-size:11.5px; margin-top:4px; display:none; }
-    .campo.invalid input, .campo.invalid textarea{ border-color:var(--accent); background:#fef8f7; }
+    .campo.invalid input, .campo.invalid textarea, .campo.invalid select{ border-color:var(--accent); background:#fef8f7; }
     .campo.invalid .campo-err{ display:block; }
+    /* Campo deshabilitado (p. ej. calculado por código, no editable a mano):
+       más transparente para que se note que no admite edición manual. */
+    .campo input:disabled, .campo textarea:disabled, .campo select:disabled{ opacity:.55; cursor:not-allowed; }
+    /* Campo condicional con reservaEspacio: sigue ocupando su celda del grid
+       (para que el campo siguiente no se corra de lugar) pero no se ve ni se
+       puede interactuar con él mientras no aplique. */
+    .campo-invisible{ visibility:hidden; }
     .campo-check{ display:flex; align-items:center; gap:8px; margin:10px 0 6px; }
     .campo-check input{ width:auto; }
     .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }

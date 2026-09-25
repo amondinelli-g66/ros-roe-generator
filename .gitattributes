@@ -1,0 +1,17 @@
+# Normaliza finales de línea: LF en el repo, checkout nativo por SO.
+* text=auto eol=lf
+
+# LF OBLIGATORIO. Estos archivos los lee Linux dentro del contenedor: un
+# CRLF en nginx.conf o en el Dockerfile produce errores de arranque que
+# señalan la línea equivocada (o un shebang `#!/bin/sh\r` que hace morir al
+# contenedor "no such file or directory" nombrando un script que sí existe).
+nginx.conf    text eol=lf
+Dockerfile    text eol=lf
+.dockerignore text eol=lf
+*.sh          text eol=lf
+
+# Binarios (no tocar).
+*.webp binary
+*.png  binary
+*.ico  binary
+*.jpg  binary

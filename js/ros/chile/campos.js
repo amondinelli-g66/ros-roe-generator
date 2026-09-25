@@ -33,6 +33,17 @@
     var esNacional = function (doc) { return obtener(doc, prefix + ".tipo_identificacion") === "Nacional (RUN/RUT)"; };
     return [
       { path: prefix + ".esta_persona_es", label: "¿Esta persona es?", type: "select", options: ["Reportado", "Vinculado"] },
+      // Campos emergentes del formulario UAF: la base no tiene el dato de CÓMO se
+      // vincula esta persona con el reportado, así que los completa el analista.
+      {
+        path: prefix + ".tipo_vinculado", label: "Tipo vinculado", type: "select",
+        options: ["Familiar", "Comercial", "Laboral", "Otra"],
+        showIf: function (doc) { return obtener(doc, prefix + ".esta_persona_es") === "Vinculado"; },
+      },
+      {
+        path: prefix + ".detalle_vinculacion", label: "Detalle vinculación", type: "text", full: true,
+        showIf: function (doc) { return obtener(doc, prefix + ".tipo_vinculado") === "Otra"; },
+      },
       { path: prefix + ".tipo_persona", label: "Tipo persona", type: "select", options: ["Natural", "Jurídica"] },
       { path: prefix + ".nombre_o_razon_social", label: "Nombre o razón social", type: "text", full: true },
       { path: prefix + ".apellido_paterno", label: "Apellido paterno", type: "text", showIf: esNatural },

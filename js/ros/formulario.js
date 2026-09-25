@@ -43,8 +43,34 @@
   var segInput = $("segmento");
 
   function resetSegmento() {
-    segEls.forEach(function (x) { x.classList.remove("sel"); });
+    segEls.forEach(function (x) {
+      x.classList.remove("sel", "no-admitido");
+      x.removeAttribute("aria-disabled");
+      x.title = "";
+    });
     segInput.value = "";
+  }
+
+  // Documentos que solo admiten un segmento (lo declara el backend en
+  // /config -> documentos[].segmento_fijo; hoy, el ROS de Argentina con B2C):
+  // ese queda seleccionado y el otro se muestra apagado y no responde. El
+  // pipeline igual rechaza el segmento no admitido, así que esto es ayuda
+  // visual, no la única defensa.
+  function aplicarSegmentoFijo(segmento) {
+    segEls.forEach(function (x) {
+      var admitido = x.dataset.segmento === segmento;
+      x.classList.toggle("sel", admitido);
+      x.classList.toggle("no-admitido", !admitido);
+      if (!admitido) {
+        x.setAttribute("aria-disabled", "true");
+        x.title = "Este documento cubre por ahora solo clientes " + segmento + ".";
+      }
+    });
+    segInput.value = segmento;
+  }
+
+  function segmentoBloqueado() {
+    return segInput.value && document.querySelector(".seg.no-admitido") !== null;
   }
 
   var form = $("form");
@@ -128,6 +154,8 @@
 
     segEls.forEach(function (b) {
       b.addEventListener("click", function () {
+        // Con el segmento fijo por documento, los botones no se pueden cambiar.
+        if (segmentoBloqueado()) return;
         segEls.forEach(function (x) { x.classList.remove("sel"); });
         b.classList.add("sel");
         segInput.value = b.dataset.segmento;
@@ -227,6 +255,7 @@
     $("vinc-box").hidden = true;
     $("btn-add-vinc").hidden = false;
     resetSegmento();   // el tipo de cliente (B2B/B2C) es de OTRO documento
+    if (ctx.segmentoFijo) aplicarSegmentoFijo(ctx.segmentoFijo);
   }
 
   // ------------------------------------------------------------------- //
@@ -238,4 +267,5 @@
   GEREO.registrarFormulario("ros", DEF);
   GEREO.registrarFormulario("Chile|ROS", DEF);
   GEREO.registrarFormulario("Colombia|ROS", DEF);
+  GEREO.registrarFormulario("Argentina|ROS", DEF);
 })();
