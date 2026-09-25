@@ -5,7 +5,10 @@
 README.md
 Dockerfile
 .dockerignore
-nginx.conf
+# OJO: nginx.conf NO va aca. El Dockerfile lo COPIA, y excluirlo hace fallar el
+# build con `"/nginx.conf": not found` — un mensaje que suena a que el archivo
+# no existe en el repo, cuando en realidad existe y es este archivo el que lo
+# esta escondiendo del contexto de build.
 # config.json lleva la URL del túnel del PC: es exclusivo de GitHub Pages y en
 # el contenedor apuntaría a un túnel muerto.
 config.json
