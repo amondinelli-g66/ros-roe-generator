@@ -40,10 +40,10 @@
 
   // --- Listas taxativas de la UIF (espejo de core/paises/argentina/enums.py) --
   var SEXO = ["Masculino", "Femenino", "X"];
-  var ESTADO_CIVIL = ["SOLTERO", "CASADO", "VIUDO", "UNION CIVIL", "UNION DE HECHO"];
+  var ESTADO_CIVIL = ["SOLTERO", "CASADO", "VIUDO", "UNIÓN CIVIL", "UNIÓN DE HECHO"];
   var TIPO_DOCUMENTO = [
-    "Documento Nacional de Identidad", "Libreta de Enrolamiento", "Libreta Civica",
-    "Cedula Mercosur", "Pasaporte", "Pasaporte EXT", "Documento EXT",
+    "Documento Nacional de Identidad", "Libreta de Enrolamiento", "Libreta Cívica",
+    "Cédula Mercosur", "Pasaporte", "Pasaporte EXT", "Documento EXT",
   ];
   var RELACION_HECHO = ["DIRECTA", "INDIRECTA", "INCUMPLIMIENTO DE LA DEBIDA DILIGENCIA"];
   var RELACION_PRODUCTO = ["Directa", "Indirecta"];
@@ -65,35 +65,20 @@
   ];
 
   var DELITOS_PRECEDENTES = [
-    "Tráfico y comercialización ilícita de estupefacientes (ley 23.737)",
-    "Contrabando de armas y contrabando de estupefacientes (ley 22.415)",
-    "Asociación ilícita", "Fraude contra la administración pública",
-    "Prostitución de menores", "Pornografía infantil", "Extorsión", "Trata de personas",
-    "Narcotráfico", "Cohecho", "Tráfico de influencias",
-    "Malversación de caudales públicos", "Exacciones ilegales",
-    "Enriquecimiento ilícito de funcionarios y empleados", "Evasión simple",
-    "Evasión agravada", "Aprovechamiento indebido de los subsidios",
-    "Obtención fraudulenta de beneficios fiscales", "Apropiación indebida de tributos",
-    "Contrabando de cereales y oleaginosas", "Contrabando de alimentos",
-    "Asociación ilícita fiscal",
-    "Delitos ambientales y/o tráfico de fauna y vida silvestre",
-    "Trata de personas y explotación laboral", "Robo y/o tráfico de obras de arte",
-    "Robo y/o tráfico de objetos y/o documentos históricos",
-    "Tráfico de Residuos peligrosos",
-    "Fabricación, tráfico o contrabando de armas químicas y/o de destrucción masiva",
-    "Defraudaciones y/o estafas", "Fraudes al comercio y a la industria",
-    "Delitos contra el orden económico y/o financiero", "Desabastecimiento",
-    "Delitos cometidos por asociaciones ilícitas (artículo 210 del Código Penal) organizadas para cometer delitos por fines políticos o raciales",
-    "Colocación de activos en el exterior sin declarar",
-    "Intermediación financiera no autorizada",
-    "Suministro o utilización de información financiera privilegiada", "Usura",
-    "Quiebras fraudulentas",
-    "Falseamiento u ocultación de balances, memorias u otros documentos de contabilidad",
-    "Libramiento numerosos de cheques sin fondos", "Fraudes bursátiles",
-    "Especulación con valores negociables para hacer subir o bajar los precios o simular liquidez valiéndose de noticias falsas y/o simuladas",
-    "Empleados y funcionarios de instituciones financieras o bursátiles que recibieran dinero y/ u otros beneficios económicos como condición para celebrar operaciones crediticias",
-    "Delitos que afecten la ley de cambios",
-    "Delitos que afecten la ley de defensa de la competencia",
+    "Tráfico y comercialización ilícita de estupefacientes (ley 23.737)", "Contrabando de armas y contrabando de estupefacientes (ley 22.415)", "Asociación ilícita",
+    "Fraude contra la administración pública", "Prostitución de menores", "Pornografía infantil", "Extorsión", "Trata de personas", "Narcotráfico", "Cohecho", "Tráfico de influencias",
+    "Malversación de caudales públicos", "Exacciones ilegales", "Enriquecimiento ilícito de funcionarios y empleados", "Evasión simple", "Evasión agravada",
+    "Aprovechamiento indebido de los subsidios", "Obtención fraudulenta de beneficios fiscales", "Apropiación indebida de tributos", "Contrabando de cereales y oleaginosas.",
+    "Contrabando de alimentos.", "Asociación ilícita fiscal.", "Delitos ambientales y/o tráfico de fauna y vida silvestre.", "Trata de personas y explotación laboral",
+    "Robo y/o tráfico de obras de arte.", "Robo y/o tráfico de objetos y/o documentos históricos", "Tráfico de Residuos peligrosos",
+    "Fabricación, tráfico o contrabando de armas químicas y/o de destrucción masiva.", "Defraudaciones y/o estafas", "Fraudes al comercio y a la industria.",
+    "Delitos contra el orden económico y/o financiero.", "Desabastecimiento.",
+    "Delitos cometidos por asociaciones ilícitas (artículo 210 del Código Penal) organizadas para cometer delitos por fines políticos o raciales.", "Colocación de activos en el exterior sin declar.",
+    "Intermediación financiera no autorizada.", "Suministro o utilización de información financiera privilegiada.", "Usura", "Quiebras fraudulentas",
+    "Falseamiento u ocultación de balances, memorias u otros documentos de contablidad.", "Libramiento numerosos de cheques sin fondos.", "Fraudes bursátiles.",
+    "Especulación con valores negociables para hacer subir o bajar los precios o simular liquidez valiéndose de noticias falsas y/o simuladas.",
+    "Empleados y funcionarios de instituciones financieras o bursátiles que recibieran dinero y/ u otros beneficios económicos como condición para celebrar operaciones crediticias, financieras o bursátiles.",
+    "Delitos que afecten la ley de cambios.", "Delitos que afecten la ley de defensa de la competencia.",
   ];
 
   var PARAISOS_FISCALES = [
@@ -103,8 +88,8 @@
     "ARUBA (Territorio de Países Bajos)", "ASCENCION",
     "COMUNIDAD DE LAS BAHAMAS (Estado independiente)", "BARBADOS (Estado independiente)",
     "BELICE (Estado independiente)", "BERMUDAS (Territorio no autónomo del Reino Unido)",
-    "BRUNEI DARUSSALAM (Estado independiente)", "CAMPIONE D'ITALIA",
-    "COLONIA DE GIBRALTAR", "EL COMMONWEALTH DE DOMINICA (Estado Asociado)",
+    "BRUNEI DARUSSALAM (Estado independiente)", "CAMPIONE D’ITALIA", "COLONIA DE GIBRALTAR",
+    "EL COMMONWEALTH DE DOMINICA (Estado Asociado)",
     "EMIRATOS ARABES UNIDOS (Estado independiente)",
     "ESTADO DE BAHREIN (Estado independiente)",
     "ESTADO ASOCIADO DE GRANADA (Estado independiente)",
@@ -126,8 +111,8 @@
     "MADEIRA (Territorio de Portugal)",
     "MONTSERRAT (Territorio no autónomo del Reino Unido)", "NIUE", "PATAU", "PITCAIRN",
     "POLINESIA FRANCESA (Territorio de Ultramar de Francia)",
-    "PRINCIPADO DEL VALLE DE ANDORRA",
-    "PRINCIPADO DE LIECHTENSTEIN (Estado independiente)", "PRINCIPADO DE MONACO",
+    "PRINCIPADO DEL VALLE DE ANDORRA", "PRINCIPADO DE LIECHTENSTEIN (Estado independiente)",
+    "PRINCIPADO DE MONACO",
     "REGIMEN APLICABLE A LAS SOCIEDADES ANONIMAS FINANCIERAS (regidas por la ley 11.073 del 24 de junio de 1948 de la República Oriental del Uruguay)",
     "REINO DE TONGA (Estado independiente)", "REINO HACHEMITA DE JORDANIA",
     "REINO DE SWAZILANDIA (Estado independiente)", "REPUBLICA DE ALBANIA",
@@ -147,7 +132,7 @@
     "SAN VICENTE Y LAS GRANADINAS (Estado independiente)",
     "SAMOA AMERICANA (Territorio no autónomo de los EEUU)", "SAMOA OCCIDENTAL",
     "SERENISIMA REPUBLICA DE SAN MARINO (Estado independiente)", "SULTANATO DE OMAN",
-    "ARCHIPIELAGO DE SVALBARD", "TUVALU", "TRISTAN DA CUNHA", "TRIESTE (Italia)",
+    "ARCHIPIELAGO DE SVBALBARD", "TUVALU", "TRISTAN DA CUNHA", "TRIESTE (Italia)",
     "TOKELAU", "ZONA LIBRE DE OSTRAVA (ciudad de la antigua Checoeslovaquia)",
   ];
 
@@ -170,12 +155,12 @@
     "COMPRA/VENTA TARJETAS TELEFÓNICAS", "COMPRA/VENTA VALORES NEGOCIABLES",
     "COMPRA/VENTA DE MONEDA EXTRANJERA", "COMPRA/VENTA DE FÁBRICAS Y/O EMPRESAS",
     "CONSTATACIÓN DE INTIMACIÓN DE PAGO", "CONVENIO CANCELACIÓN DEUDA Y PAGO",
-    "CONVENIO DÉBITO AUTOMÁTICO", "CUENTA COMITENTE", "CUENTA CORRIENTE",
-    "CUENTA CUSTODIA", "CUENTA TÍTULOS", "DONACIÓN", "EGRESO DE DÓLARES NO DECLARADOS",
+    "CONVENIO DÉBITO AUTOMÁTICO", "CUENTA COMITENTE", "CUENTA CORRIENTE", "CUENTA CUSTODIA",
+    "CUENTA TÍTULOS", "DONACIÓN", "EGRESO DE DÓLARES NO DECLARADOS",
     "ESCRITURAS DE PODERES", "ESCRITURAS PROTOCOLARES", "FONDO COMÚN DE INVERSIÓN",
     "IMPORTACIONES", "INGRESO DE DIVISAS", "INGRESOS NO DECLARADOS",
     "INVERSIONES DE PORTAFOLIO EN EL EXTERIOR", "LIBERACIÓN DE HIPOTECA", "MUTUOS",
-    "OPERACIONES BURSATILES", "ORDEN DE PAGO", "P.PRENDARIO", "PAGARÉ", "PAGARÉ EXTERIOR",
+    "OPERACIONES BURSATLES", "ORDEN DE PAGO", "P.PRENDARIO", "PAGARÉ", "PAGARÉ EXTERIOR",
     "PAGO A PROVEEDORES", "PF REPROGRAMADO", "PLAZO FIJO", "PREMIO DE BINGO",
     "PREMIO DE CASINOS", "PRÉSTAMO HIPOTECARIO", "PRÉSTAMO PERSONAL", "PRÉSTAMO PRENDARIO",
     "PRÉSTAMOS DEL EXTERIOR", "RECAUDACIONES", "RECONOCIMIENTO DEUDA Y CESIÓN DERECHOS",
@@ -200,45 +185,14 @@
     "Shekel (Israel)", "Yen (Japón)", "Yuan (Rep. Pop. de China)", "Otro/a",
   ];
 
-  // Catálogo de países para nacionalidad, país de residencia y el "País" del
-  // cargo PEP: no es una lista taxativa de la UIF (no hay valores exactos que
-  // verificar contra el formulario), solo nombres de países en español para
-  // el desplegable. Espejo de core/paises/argentina/enums.py PAISES_MUNDO
-  // (mismo orden, mismos nombres — el backend ya traduce nacionalidad ahí).
-  var PAISES_MUNDO = [
-    "Afganistán", "Albania", "Alemania", "Andorra", "Angola", "Antigua y Barbuda",
-    "Arabia Saudita", "Argelia", "Argentina", "Armenia", "Australia", "Austria",
-    "Azerbaiyán", "Bahamas", "Bangladés", "Barbados", "Baréin", "Bélgica", "Belice",
-    "Benín", "Bielorrusia", "Birmania", "Bolivia", "Bosnia y Herzegovina", "Botsuana",
-    "Brasil", "Brunéi", "Bulgaria", "Burkina Faso", "Burundi", "Bután", "Cabo Verde",
-    "Camboya", "Camerún", "Canadá", "Catar", "Chad", "Chile", "China", "Chipre",
-    "Ciudad del Vaticano", "Colombia", "Comoras", "Corea del Norte", "Corea del Sur",
-    "Costa de Marfil", "Costa Rica", "Croacia", "Cuba", "Dinamarca", "Dominica",
-    "Ecuador", "Egipto", "El Salvador", "Emiratos Árabes Unidos", "Eritrea",
-    "Eslovaquia", "Eslovenia", "España", "Estados Unidos", "Estonia", "Etiopía",
-    "Filipinas", "Finlandia", "Fiyi", "Francia", "Gabón", "Gambia", "Georgia",
-    "Ghana", "Granada", "Grecia", "Guatemala", "Guyana", "Guinea", "Guinea-Bisáu",
-    "Guinea Ecuatorial", "Haití", "Honduras", "Hungría", "India", "Indonesia",
-    "Irak", "Irán", "Irlanda", "Islandia", "Islas Marshall", "Islas Salomón",
-    "Israel", "Italia", "Jamaica", "Japón", "Jordania", "Kazajistán", "Kenia",
-    "Kirguistán", "Kiribati", "Kuwait", "Laos", "Lesoto", "Letonia", "Líbano",
-    "Liberia", "Libia", "Liechtenstein", "Lituania", "Luxemburgo", "Macedonia del Norte",
-    "Madagascar", "Malasia", "Malaui", "Maldivas", "Malí", "Malta", "Marruecos",
-    "Mauricio", "Mauritania", "México", "Micronesia", "Moldavia", "Mónaco",
-    "Mongolia", "Montenegro", "Mozambique", "Namibia", "Nauru", "Nepal", "Nicaragua",
-    "Níger", "Nigeria", "Noruega", "Nueva Zelanda", "Omán", "Países Bajos",
-    "Pakistán", "Palaos", "Panamá", "Papúa Nueva Guinea", "Paraguay", "Perú",
-    "Polonia", "Portugal", "Reino Unido", "República Centroafricana",
-    "República Checa", "República del Congo", "República Democrática del Congo",
-    "República Dominicana", "Ruanda", "Rumania", "Rusia", "Samoa", "San Cristóbal y Nieves",
-    "San Marino", "San Vicente y las Granadinas", "Santa Lucía", "Santo Tomé y Príncipe",
-    "Senegal", "Serbia", "Seychelles", "Sierra Leona", "Singapur", "Siria",
-    "Somalia", "Sri Lanka", "Suazilandia", "Sudáfrica", "Sudán", "Sudán del Sur",
-    "Suecia", "Suiza", "Surinam", "Tailandia", "Tanzania", "Tayikistán",
-    "Timor Oriental", "Togo", "Tonga", "Trinidad y Tobago", "Túnez", "Turkmenistán",
-    "Turquía", "Tuvalu", "Ucrania", "Uganda", "Uruguay", "Uzbekistán", "Vanuatu",
-    "Venezuela", "Vietnam", "Yemen", "Yibuti", "Zambia", "Zimbabue",
-  ];
+  // Catálogos largos de la UIF (países, tipos de inusualidad, actividades):
+  // vienen de catalogos_uif.js, generado desde el mismo JSON que usa
+  // core/paises/argentina/enums.py — una sola fuente para los dos repos.
+  var CATALOGOS = window.CATALOGOS_UIF_AR;
+  var PAISES_MUNDO = CATALOGOS.paises;
+  var TIPOS_INUSUALIDAD = CATALOGOS.tipos_inusualidad;
+  var OTRA_INUSUALIDAD = "Otras operaciones no mencionadas en los ítems precedentes";
+  var ACTIVIDADES = CATALOGOS.actividades;
 
   function esArticuloPeriodistico(doc) {
     return obtener(doc, "delito_precedente.fuente_informacion") === "Artículo Periodístico";
@@ -381,7 +335,8 @@
       { path: base + ".es_pep", label: "Es PEP", type: "checkbox" },
       { path: base + ".relacion_hecho", label: "Relación con el hecho reportado", type: "select",
         options: RELACION_HECHO, required: true },
-      { path: base + ".actividad", label: "Actividad", type: "text", required: true },
+      { path: base + ".actividad", label: "Actividad", type: "select", options: ACTIVIDADES,
+        full: true, required: true },
       // Cargo y dependencia solo se piden (y son obligatorios) si es PEP; país
       // y "desempeña actualmente" son opcionales aun siendo PEP.
       { grupoTitulo: "Datos del cargo (obligatorios por ser PEP)", showIf: esPep },
@@ -447,8 +402,10 @@
           { path: "persona_fisica.segundo_nombre", label: "Segundo nombre", type: "text" },
           { path: "persona_fisica.fecha_nacimiento", label: "Fecha de nacimiento (DD/MM/AAAA)", type: "text",
             validate: esFechaUIF, errMsg: ERR_FECHA, required: true },
+          // La UIF solo admite "Argentina" en esta variante (la extranjera es
+          // la otra sección).
           { path: "persona_fisica.nacionalidad", label: "Nacionalidad", type: "select",
-            options: PAISES_MUNDO, required: true },
+            options: ["Argentina"], required: true },
           { path: "persona_fisica.sexo", label: "Sexo", type: "select", options: SEXO, required: true },
           { path: "persona_fisica.estado_civil", label: "Estado civil", type: "select",
             options: ESTADO_CIVIL, required: true },
@@ -480,10 +437,11 @@
         { path: "persona_fisica_extranjera.estado_civil", label: "Estado civil", type: "select",
           options: ["Ninguno/a"].concat(ESTADO_CIVIL), required: true },
         { grupoTitulo: "Identificación" },
+        // Opcionales en el portal de la UIF (verificado 2026-10-08).
         { path: "persona_fisica_extranjera.tipo_identificador_tributario",
-          label: "Tipo identificador tributario", type: "text", required: true },
+          label: "Tipo identificador tributario", type: "text" },
         { path: "persona_fisica_extranjera.numero_identificacion_tributaria",
-          label: "Número identificación tributaria", type: "text", required: true },
+          label: "Número identificación tributaria", type: "text" },
       ].concat(
         camposDomicilio("persona_fisica_extranjera"),
         camposVinculos("persona_fisica_extranjera")
@@ -539,7 +497,11 @@
           type: "select", options: PARAISOS_FISCALES, full: true, required: true },
         { path: "operaciones.triple_frontera", label: "Operación relacionada con triple frontera",
           type: "select", options: TRIPLE_FRONTERA, full: true, required: true },
-        { path: "operaciones.tipo_inusualidad", label: "Tipo de inusualidad", type: "text", required: true },
+        { path: "operaciones.tipo_inusualidad", label: "Tipo de inusualidad", type: "select",
+          options: TIPOS_INUSUALIDAD, full: true, required: true },
+        { path: "operaciones.otra_inusualidad", label: "Otra inusualidad", type: "text", full: true,
+          required: true,
+          showIf: function (doc) { return obtener(doc, "operaciones.tipo_inusualidad") === OTRA_INUSUALIDAD; } },
         { path: "operaciones.relacion_producto", label: "Relación del producto con el hecho reportado",
           type: "select", options: RELACION_PRODUCTO, required: true },
 
