@@ -296,7 +296,9 @@
     return [
       { grupoTitulo: "Datos de contacto y residencia" },
       { path: base + ".calle", label: "Calle", type: "text", required: true },
-      { path: base + ".nro", label: "Nro", type: "text", required: true,
+      // Opcional: si el cliente nunca ingresó el número, queda vacío (el
+      // robot de carga pone "-", porque en el portal el campo es obligatorio).
+      { path: base + ".nro", label: "Nro", type: "text",
         validate: soloDigitos, errMsg: ERR_DIGITOS },
       { path: base + ".piso", label: "Piso", type: "text" },
       { path: base + ".departamento", label: "Departamento", type: "text" },
