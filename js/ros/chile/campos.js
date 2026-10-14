@@ -25,12 +25,33 @@
   var OPT_CONJUNTO_OPERACIONES = "Un conjunto de operaciones inusuales realizada por el/los reportado(s)";
   var OPT_GATILLO_NEGOCIOS = "Alerta informada por personal que se desempeña en los procesos de negocios";
 
+  // Opciones del Portal de Entidades Reportantes de la UAF (Paso 2).
+  var TIPOS_CALLE_UAF = ["Avenida", "Calle", "Pasaje", "Camino o ruta", "Otra"];
+  var REGIONES_UAF = ["REGIÓN METROPOLITANA", "PRIMERA REGIÓN", "SEGUNDA REGIÓN", "TERCERA REGIÓN",
+    "CUARTA REGIÓN", "QUINTA REGIÓN", "SEXTA REGIÓN", "SÉPTIMA REGIÓN", "OCTAVA REGIÓN",
+    "NOVENA REGIÓN", "DÉCIMA REGIÓN", "DÉCIMA PRIMERA REGIÓN", "DÉCIMA SEGUNDA REGION",
+    "DÉCIMA CUARTA REGIÓN", "DÉCIMA QUINTA REGIÓN", "DÉCIMA SEXTA REGIÓN", "SIN REGION"];
+  var ACTIVIDADES_UAF = [
+    "AGRICULTURA, GANADERÍA, CAZA Y SILVICULTURA", "PESCA", "EXPLOTACIÓN DE MINAS Y CANTERAS",
+    "INDUSTRIAS MANUFACTURERAS NO METÁLICAS", "INDUSTRIAS MANUFACTURERAS METÁLICAS",
+    "SUMINISTRO DE ELECTRICIDAD, GAS Y AGUA", "CONSTRUCCIÓN",
+    "COMERCIO AL POR MAYOR Y MENOR; REP. VEHÍCULOS AUTOMOTORES/ENSERES DOMÉSTICOS",
+    "HOTELES Y RESTAURANTES", "TRANSPORTE, ALMACENAMIENTO Y COMUNICACIONES", "INTERMEDIACIÓN FINANCIERA",
+    "ACTIVIDADES INMOBILIARIAS, EMPRESARIALES Y DE ALQUILER",
+    "ADMINISTRACIÓN PÚBLICA Y DEFENSA; PLANES DE SEGURIDAD SOCIAL, AFILIACIÓN OBLIGATORIA",
+    "ENSEÑANZA", "SERVICIOS SOCIALES Y DE SALUD",
+    "OTRAS ACTIVIDADES DE SERVICIOS COMUNITARIAS, SOCIALES Y PERSONALES",
+    "CONSEJO DE ADMINISTRACIÓN DE EDIFICIOS Y CONDOMINIOS",
+    "ORGANIZACIONES Y ÓRGANOS EXTRATERRITORIALES", "OTRA ACTIVIDAD ECONOMICA"];
+  // Teléfono/móvil del portal: solo dígitos, máximo 12.
+  var esTelefonoUAF = function (v) { return !v || /^[0-9]{1,12}$/.test(v); };
+
   // Los mismos campos de identidad sirven para el reportado (paso2) y para cada
   // vinculado (vinculados.<i>): por eso reciben el prefijo de la ruta.
   function identidadFieldsChile(prefix) {
     var esNatural = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Natural"; };
     var esJuridica = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Jurídica"; };
-    var esNacional = function (doc) { return obtener(doc, prefix + ".tipo_identificacion") === "Nacional (RUN/RUT)"; };
+    var esNacional = function (doc) { return obtener(doc, prefix + ".tipo_identificacion") === "Nacional (RUN o RUT)"; };
     return [
       { path: prefix + ".esta_persona_es", label: "¿Esta persona es?", type: "select", options: ["Reportado", "Vinculado"] },
       // Campos emergentes del formulario UAF: la base no tiene el dato de CÓMO se
@@ -39,6 +60,8 @@
         path: prefix + ".tipo_vinculado", label: "Tipo vinculado", type: "select",
         options: ["Familiar", "Comercial", "Laboral", "Otra"],
         showIf: function (doc) { return obtener(doc, prefix + ".esta_persona_es") === "Vinculado"; },
+        validate: function (v, doc) { return v !== "Familiar" || !esJuridica(doc); },
+        errMsg: "Una persona jurídica no puede ser vinculado Familiar.",
       },
       {
         path: prefix + ".detalle_vinculacion", label: "Detalle vinculación", type: "text", full: true,
@@ -48,44 +71,55 @@
       { path: prefix + ".nombre_o_razon_social", label: "Nombre o razón social", type: "text", full: true },
       { path: prefix + ".apellido_paterno", label: "Apellido paterno", type: "text", showIf: esNatural },
       { path: prefix + ".apellido_materno", label: "Apellido materno", type: "text", showIf: esNatural },
-      { path: prefix + ".tipo_identificacion", label: "Tipo identificación", type: "select", options: ["Nacional (RUN/RUT)", "Extranjera"] },
+      { path: prefix + ".tipo_identificacion", label: "Tipo identificación", type: "select", options: ["Nacional (RUN o RUT)", "Extranjera"] },
       {
         path: prefix + ".numero_id", label: "Número ID", type: "text",
         validate: function (v, doc) { return !v || !esNacional(doc) || validarRut(v); },
         errMsg: "No supera el dígito verificador (módulo 11). Revisa el RUT/RUN.",
       },
-      { path: prefix + ".nacionalidad", label: "Nacionalidad", type: "text", showIf: esNatural },
+      { path: prefix + ".nacionalidad", label: "Nacionalidad (país como en el portal UAF, ej. CHILE)", type: "text", showIf: esNatural },
       { path: prefix + ".pais_residencia", label: "País de residencia", type: "text", showIf: esNatural },
-      { path: prefix + ".pais_constitucion", label: "País de constitución", type: "text", showIf: esJuridica },
+      { path: prefix + ".pais_constitucion", label: "País de constitución (como en el portal UAF)", type: "text", showIf: esJuridica },
       { path: prefix + ".pais_funcionamiento", label: "País de funcionamiento", type: "text", showIf: esJuridica },
       { grupoTitulo: "Dirección" },
-      { path: prefix + ".direccion.tipo_direccion", label: "Tipo dirección", type: "select", options: ["Conocida", "Desconocida"] },
-      { path: prefix + ".direccion.tipo_calle", label: "Tipo calle", type: "text" },
-      { path: prefix + ".direccion.nombre_calle", label: "Nombre calle (MAYÚSCULAS)", type: "text", max: 50 },
-      { path: prefix + ".direccion.numero", label: "N°", type: "text" },
-      { path: prefix + ".direccion.complemento", label: "Complemento", type: "text" },
-      { path: prefix + ".direccion.region", label: "Región", type: "text" },
-      { path: prefix + ".direccion.comuna", label: "Comuna", type: "text" },
-      { path: prefix + ".direccion.codigo_postal", label: "Código postal", type: "text" },
       {
-        path: prefix + ".direccion.telefono", label: "Teléfono", type: "text",
+        path: prefix + ".direccion.tipo_direccion", label: "Tipo dirección", type: "select", options: ["Conocida", "Desconocida"],
+        validate: function (v, doc) { return v !== "Desconocida" || obtener(doc, prefix + ".esta_persona_es") !== "Reportado"; },
+        errMsg: "El reportado no puede tener una dirección desconocida.",
+      },
+      { path: prefix + ".direccion.tipo_calle", label: "Tipo calle", type: "select", options: TIPOS_CALLE_UAF },
+      { path: prefix + ".direccion.nombre_calle", label: "Nombre calle (MAYÚSCULAS)", type: "text", max: 50 },
+      { path: prefix + ".direccion.numero", label: "N°", type: "text", max: 10 },
+      { path: prefix + ".direccion.complemento", label: "Complemento", type: "text", max: 50 },
+      { path: prefix + ".direccion.region", label: "Región", type: "select", options: REGIONES_UAF },
+      { path: prefix + ".direccion.comuna", label: "Comuna", type: "text" },
+      { path: prefix + ".direccion.codigo_postal", label: "Código postal", type: "text", max: 15 },
+      {
+        path: prefix + ".direccion.telefono", label: "Teléfono (solo dígitos)", type: "text", max: 12,
         disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.telefono_sin_info"); },
+        validate: esTelefonoUAF, errMsg: "Solo dígitos, máximo 12.",
       },
       { path: prefix + ".direccion.telefono_sin_info", label: "Sin información (teléfono)", type: "checkbox", clears: prefix + ".direccion.telefono" },
       {
-        path: prefix + ".direccion.movil", label: "Móvil", type: "text",
+        path: prefix + ".direccion.movil", label: "Móvil (solo dígitos)", type: "text", max: 12,
         disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.movil_sin_info"); },
+        validate: esTelefonoUAF, errMsg: "Solo dígitos, máximo 12.",
       },
       { path: prefix + ".direccion.movil_sin_info", label: "Sin información (móvil)", type: "checkbox", clears: prefix + ".direccion.movil" },
       {
-        path: prefix + ".direccion.email", label: "Email", type: "text",
+        path: prefix + ".direccion.email", label: "Email", type: "text", max: 50,
         disabledIf: function (doc) { return !!obtener(doc, prefix + ".direccion.email_sin_info"); },
         validate: function (v) { return !v || validarEmail(v); }, errMsg: "Formato de email inválido.",
       },
       { path: prefix + ".direccion.email_sin_info", label: "Sin información (email)", type: "checkbox", clears: prefix + ".direccion.email" },
       { grupoTitulo: "Antecedentes" },
-      { path: prefix + ".actividad_economica", label: "Actividad económica (una por línea)", type: "list", full: true },
-      { path: prefix + ".informacion_adicional_actividad", label: "Información adicional de la actividad", type: "textarea", max: 4000, full: true },
+      {
+        // Obligatoria en el portal: al menos una, con el texto exacto de su listado.
+        path: prefix + ".actividad_economica", label: "Actividad económica (una por línea, texto exacto del listado UAF)", type: "list", full: true, required: true,
+        validate: function (v) { return v.every(function (a) { return ACTIVIDADES_UAF.indexOf(a) >= 0; }); },
+        errMsg: "Elige al menos una actividad del listado UAF: " + ACTIVIDADES_UAF.join(" · "),
+      },
+      { path: prefix + ".informacion_adicional_actividad", label: "Información adicional de la actividad", type: "textarea", max: 500, full: true },
     ];
   }
 
