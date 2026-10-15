@@ -25,24 +25,11 @@
   var OPT_CONJUNTO_OPERACIONES = "Un conjunto de operaciones inusuales realizada por el/los reportado(s)";
   var OPT_GATILLO_NEGOCIOS = "Alerta informada por personal que se desempeña en los procesos de negocios";
 
-  // Opciones del Portal de Entidades Reportantes de la UAF (Paso 2).
-  var TIPOS_CALLE_UAF = ["Avenida", "Calle", "Pasaje", "Camino o ruta", "Otra"];
-  var REGIONES_UAF = ["REGIÓN METROPOLITANA", "PRIMERA REGIÓN", "SEGUNDA REGIÓN", "TERCERA REGIÓN",
-    "CUARTA REGIÓN", "QUINTA REGIÓN", "SEXTA REGIÓN", "SÉPTIMA REGIÓN", "OCTAVA REGIÓN",
-    "NOVENA REGIÓN", "DÉCIMA REGIÓN", "DÉCIMA PRIMERA REGIÓN", "DÉCIMA SEGUNDA REGION",
-    "DÉCIMA CUARTA REGIÓN", "DÉCIMA QUINTA REGIÓN", "DÉCIMA SEXTA REGIÓN", "SIN REGION"];
-  var ACTIVIDADES_UAF = [
-    "AGRICULTURA, GANADERÍA, CAZA Y SILVICULTURA", "PESCA", "EXPLOTACIÓN DE MINAS Y CANTERAS",
-    "INDUSTRIAS MANUFACTURERAS NO METÁLICAS", "INDUSTRIAS MANUFACTURERAS METÁLICAS",
-    "SUMINISTRO DE ELECTRICIDAD, GAS Y AGUA", "CONSTRUCCIÓN",
-    "COMERCIO AL POR MAYOR Y MENOR; REP. VEHÍCULOS AUTOMOTORES/ENSERES DOMÉSTICOS",
-    "HOTELES Y RESTAURANTES", "TRANSPORTE, ALMACENAMIENTO Y COMUNICACIONES", "INTERMEDIACIÓN FINANCIERA",
-    "ACTIVIDADES INMOBILIARIAS, EMPRESARIALES Y DE ALQUILER",
-    "ADMINISTRACIÓN PÚBLICA Y DEFENSA; PLANES DE SEGURIDAD SOCIAL, AFILIACIÓN OBLIGATORIA",
-    "ENSEÑANZA", "SERVICIOS SOCIALES Y DE SALUD",
-    "OTRAS ACTIVIDADES DE SERVICIOS COMUNITARIAS, SOCIALES Y PERSONALES",
-    "CONSEJO DE ADMINISTRACIÓN DE EDIFICIOS Y CONDOMINIOS",
-    "ORGANIZACIONES Y ÓRGANOS EXTRATERRITORIALES", "OTRA ACTIVIDAD ECONOMICA"];
+  // Listas del Portal de Entidades Reportantes de la UAF (generadas desde el
+  // backend: js/ros/chile/catalogos_uaf.js). Las opcionales llevan "" primero.
+  var CAT = window.CATALOGOS_UAF_CL;
+  var conVacio = function (lista) { return [""].concat(lista); };
+  var soloDigitos = function (v) { return !v || /^\d+$/.test(String(v)); };
   // Teléfono/móvil del portal: solo dígitos, máximo 12.
   var esTelefonoUAF = function (v) { return !v || /^[0-9]{1,12}$/.test(v); };
 
@@ -51,48 +38,51 @@
   function identidadFieldsChile(prefix) {
     var esNatural = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Natural"; };
     var esJuridica = function (doc) { return obtener(doc, prefix + ".tipo_persona") === "Jurídica"; };
+    var dirConocida = function (doc) { return obtener(doc, prefix + ".direccion.tipo_direccion") !== "Desconocida"; };
     var esNacional = function (doc) { return obtener(doc, prefix + ".tipo_identificacion") === "Nacional (RUN o RUT)"; };
     return [
-      { path: prefix + ".esta_persona_es", label: "¿Esta persona es?", type: "select", options: ["Reportado", "Vinculado"] },
+      { path: prefix + ".esta_persona_es", label: "¿Esta persona es?", type: "select", options: ["Reportado", "Vinculado"], required: true },
       // Campos emergentes del formulario UAF: la base no tiene el dato de CÓMO se
       // vincula esta persona con el reportado, así que los completa el analista.
       {
         path: prefix + ".tipo_vinculado", label: "Tipo vinculado", type: "select",
-        options: ["Familiar", "Comercial", "Laboral", "Otra"],
+        options: CAT.tiposVinculacion, required: true,
         showIf: function (doc) { return obtener(doc, prefix + ".esta_persona_es") === "Vinculado"; },
         validate: function (v, doc) { return v !== "Familiar" || !esJuridica(doc); },
         errMsg: "Una persona jurídica no puede ser vinculado Familiar.",
       },
+      { path: prefix + ".tipo_persona", label: "Tipo persona", type: "select", options: ["Natural", "Jurídica"], required: true },
+      { path: prefix + ".nombre_o_razon_social", label: "Nombre o razón social", type: "text", full: true, max: 100, required: true },
+      { path: prefix + ".apellido_paterno", label: "Apellido paterno", type: "text", max: 40, showIf: esNatural, required: true },
+      { path: prefix + ".apellido_materno", label: "Apellido materno", type: "text", max: 40, showIf: esNatural },
+      { path: prefix + ".tipo_identificacion", label: "Tipo identificación", type: "select", options: ["Nacional (RUN o RUT)", "Extranjera"], required: true },
       {
-        path: prefix + ".detalle_vinculacion", label: "Detalle vinculación", type: "text", full: true,
-        showIf: function (doc) { return obtener(doc, prefix + ".tipo_vinculado") === "Otra"; },
+        // El portal pide el RUT en dos casillas (número y DV, K mayúscula) y la
+        // identificación extranjera en un campo numérico (solo dígitos).
+        path: prefix + ".numero_id", label: "Número ID (RUT con guion y DV; extranjera: solo dígitos)", type: "text", max: 20, required: true,
+        validate: function (v, doc) { return esNacional(doc) ? validarRut(v) : /^\d+$/.test(String(v)); },
+        errMsg: "RUT: debe superar el dígito verificador (módulo 11). Extranjera: solo dígitos.",
       },
-      { path: prefix + ".tipo_persona", label: "Tipo persona", type: "select", options: ["Natural", "Jurídica"] },
-      { path: prefix + ".nombre_o_razon_social", label: "Nombre o razón social", type: "text", full: true },
-      { path: prefix + ".apellido_paterno", label: "Apellido paterno", type: "text", showIf: esNatural },
-      { path: prefix + ".apellido_materno", label: "Apellido materno", type: "text", showIf: esNatural },
-      { path: prefix + ".tipo_identificacion", label: "Tipo identificación", type: "select", options: ["Nacional (RUN o RUT)", "Extranjera"] },
-      {
-        path: prefix + ".numero_id", label: "Número ID", type: "text",
-        validate: function (v, doc) { return !v || !esNacional(doc) || validarRut(v); },
-        errMsg: "No supera el dígito verificador (módulo 11). Revisa el RUT/RUN.",
-      },
-      { path: prefix + ".nacionalidad", label: "Nacionalidad (país como en el portal UAF, ej. CHILE)", type: "text", showIf: esNatural },
-      { path: prefix + ".pais_residencia", label: "País de residencia", type: "text", showIf: esNatural },
-      { path: prefix + ".pais_constitucion", label: "País de constitución (como en el portal UAF)", type: "text", showIf: esJuridica },
-      { path: prefix + ".pais_funcionamiento", label: "País de funcionamiento", type: "text", showIf: esJuridica },
+      { path: prefix + ".nacionalidad", label: "Nacionalidad", type: "select", options: conVacio(CAT.paises), showIf: esNatural, required: true },
+      { path: prefix + ".pais_residencia", label: "País residencia", type: "select", options: conVacio(CAT.paises), showIf: esNatural },
+      { path: prefix + ".pais_constitucion", label: "País constitución", type: "select", options: conVacio(CAT.paises), showIf: esJuridica, required: true },
+      { path: prefix + ".pais_funcionamiento", label: "País funcionamiento", type: "select", options: conVacio(CAT.paises), showIf: esJuridica },
       { grupoTitulo: "Dirección" },
       {
         path: prefix + ".direccion.tipo_direccion", label: "Tipo dirección", type: "select", options: ["Conocida", "Desconocida"],
         validate: function (v, doc) { return v !== "Desconocida" || obtener(doc, prefix + ".esta_persona_es") !== "Reportado"; },
         errMsg: "El reportado no puede tener una dirección desconocida.",
       },
-      { path: prefix + ".direccion.tipo_calle", label: "Tipo calle", type: "select", options: TIPOS_CALLE_UAF },
-      { path: prefix + ".direccion.nombre_calle", label: "Nombre calle (MAYÚSCULAS)", type: "text", max: 50 },
-      { path: prefix + ".direccion.numero", label: "N°", type: "text", max: 10 },
-      { path: prefix + ".direccion.complemento", label: "Complemento", type: "text", max: 50 },
-      { path: prefix + ".direccion.region", label: "Región", type: "select", options: REGIONES_UAF },
-      { path: prefix + ".direccion.comuna", label: "Comuna", type: "text" },
+      { path: prefix + ".direccion.tipo_calle", label: "Tipo calle", type: "select", options: conVacio(CAT.tiposCalle), required: true, showIf: dirConocida },
+      { path: prefix + ".direccion.nombre_calle", label: "Nombre calle (MAYÚSCULAS)", type: "text", max: 50, required: true, showIf: dirConocida },
+      { path: prefix + ".direccion.numero", label: "N°", type: "text", max: 10, required: true, showIf: dirConocida },
+      { path: prefix + ".direccion.complemento", label: "Complemento", type: "text", max: 50, showIf: dirConocida },
+      { path: prefix + ".direccion.region", label: "Región", type: "select", options: conVacio(CAT.regiones), required: true, showIf: dirConocida },
+      {
+        // El portal carga las comunas de la región elegida.
+        path: prefix + ".direccion.comuna", label: "Comuna", type: "select", required: true, showIf: dirConocida,
+        options: function (doc) { return conVacio(CAT.comunasPorRegion[obtener(doc, prefix + ".direccion.region")] || []); },
+      },
       { path: prefix + ".direccion.codigo_postal", label: "Código postal", type: "text", max: 15 },
       {
         path: prefix + ".direccion.telefono", label: "Teléfono (solo dígitos)", type: "text", max: 12,
@@ -116,10 +106,10 @@
       {
         // Obligatoria en el portal: al menos una, con el texto exacto de su listado.
         path: prefix + ".actividad_economica", label: "Actividad económica (una por línea, texto exacto del listado UAF)", type: "list", full: true, required: true,
-        validate: function (v) { return v.every(function (a) { return ACTIVIDADES_UAF.indexOf(a) >= 0; }); },
-        errMsg: "Elige al menos una actividad del listado UAF: " + ACTIVIDADES_UAF.join(" · "),
+        validate: function (v) { return v.every(function (a) { return CAT.actividades.indexOf(a) >= 0; }); },
+        errMsg: "Elige al menos una actividad del listado UAF: " + CAT.actividades.join(" · "),
       },
-      { path: prefix + ".informacion_adicional_actividad", label: "Información adicional de la actividad", type: "textarea", max: 500, full: true },
+      { path: prefix + ".informacion_adicional_actividad", label: "Información adicional de la actividad", type: "textarea", max: 500, full: true, required: true },
     ];
   }
 
@@ -128,14 +118,14 @@
       {
         titulo: "Paso 1 — Antecedentes de la(s) operación(es) sospechosa(s)",
         campos: [
-          { path: "paso1.tipo_reporte", label: "Tipo de reporte", type: "select", options: ["Lavado de Activos", "Financiamiento del Terrorismo", "Ambos", "Sin Antecedentes"] },
-          { path: "paso1.vinculado_reporte_anterior", label: "¿Vinculado a un reporte anterior?", type: "select", options: ["Sí", "No"] },
+          { path: "paso1.tipo_reporte", label: "Tipo de reporte", type: "select", options: conVacio(CAT.tiposReporte), required: true },
+          { path: "paso1.vinculado_reporte_anterior", label: "¿Vinculado a un reporte anterior?", type: "select", options: ["", "Sí", "No"], required: true },
           {
-            path: "paso1.referencia_ultimo_ros", label: "Referencia último ROS", type: "text", full: true,
+            path: "paso1.referencia_ultimo_ros", label: "Número del reporte anterior", type: "text", full: true, max: 50, required: true,
             showIf: function (doc) { return obtener(doc, "paso1.vinculado_reporte_anterior") === "Sí"; },
           },
           { path: "paso1.reporte_corresponde_a", label: "El reporte corresponde a", type: "select", full: true,
-            options: [OPT_TRANSACCION_PUNTUAL, OPT_CONJUNTO_OPERACIONES] },
+            options: ["", OPT_TRANSACCION_PUNTUAL, OPT_CONJUNTO_OPERACIONES], required: true },
           { path: "paso1.fecha_puntual", label: "Fecha (DD-MM-AAAA)", type: "text",
             validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA.",
             showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_TRANSACCION_PUNTUAL; } },
@@ -145,24 +135,28 @@
           { path: "paso1.hasta", label: "Hasta (DD-MM-AAAA)", type: "text",
             validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA.",
             showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_CONJUNTO_OPERACIONES; } },
-          { path: "paso1.cantidad_operaciones", label: "Cantidad de operaciones", type: "text",
-            validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos.",
+          { path: "paso1.cantidad_operaciones", label: "Cantidad de operaciones", type: "text", max: 40, required: true,
+            validate: function (v) { return /^\d+$/.test(String(v)) && Number(v) > 1; }, errMsg: "Solo dígitos, mayor que 1.",
             showIf: function (doc) { return obtener(doc, "paso1.reporte_corresponde_a") === OPT_CONJUNTO_OPERACIONES; } },
-          { path: "paso1.monto", label: "Monto (CLP, entero sin puntos ni comas)", type: "text",
-            validate: function (v) { return !v || /^\d+$/.test(String(v)); }, errMsg: "Solo dígitos, sin puntos ni comas." },
-          { path: "paso1.productos", label: "Productos financieros/no financieros utilizados (uno por línea)", type: "list", full: true },
-          { path: "paso1.texto_1", label: "1.- Descripción de los hechos en orden cronológico", type: "textarea", min: 250, max: 5000, full: true },
-          { path: "paso1.texto_2", label: "2.- Qué se consideró sospechoso para enviar el ROS", type: "textarea", min: 250, max: 2000, full: true },
+          { path: "paso1.monto", label: "Monto (CLP, entero sin puntos ni comas)", type: "text", max: 40, required: true,
+            validate: soloDigitos, errMsg: "Solo dígitos, sin puntos ni comas." },
+          { path: "paso1.productos", label: "Productos financieros/no financieros utilizados (uno por línea, texto exacto del listado UAF)", type: "list", full: true, required: true,
+            validate: function (v) { return v.every(function (p) { return CAT.productos.indexOf(p) >= 0; }); },
+            errMsg: "Cada línea debe ser un producto del listado UAF: " + CAT.productos.join(" · ") },
+          { path: "paso1.otro_producto", label: "Indique el otro tipo de operación o producto", type: "text", full: true, max: 40, required: true,
+            showIf: function (doc) { return (obtener(doc, "paso1.productos") || []).indexOf(CAT.productos[CAT.productos.length - 1]) >= 0; } },
+          { path: "paso1.texto_1", label: "1.- Descripción de los hechos en orden cronológico", type: "textarea", min: 250, max: 5000, full: true, required: true },
+          { path: "paso1.texto_2", label: "2.- Qué se consideró sospechoso para enviar el ROS", type: "textarea", min: 250, max: 2000, full: true, required: true },
           // ¿Qué/Quién gatilló la alerta? En el portal UAF son casillas: se pueden marcar varias.
           { path: "paso1.gatillo_sistema", label: "Alerta automática del sistema informático de cumplimiento", type: "checkbox", full: true },
           { path: "paso1.gatillo_personal", label: OPT_GATILLO_NEGOCIOS, type: "checkbox", full: true },
           { path: "paso1.gatillo_prensa", label: "Prensa/medios de comunicación", type: "checkbox", full: true },
           { path: "paso1.gatillo_otro", label: "Otro", type: "checkbox", full: true },
-          { path: "paso1.gatillo_alerta_otro", label: "Indique cuál (Otro)", type: "text", full: true,
+          { path: "paso1.gatillo_alerta_otro", label: "Indique cuál (Otro)", type: "text", full: true, required: true,
             showIf: function (doc) { return obtener(doc, "paso1.gatillo_otro") === true; } },
-          { path: "paso1.periodo_analisis_desde", label: "Período de análisis — Desde (DD-MM-AAAA)", type: "text",
+          { path: "paso1.periodo_analisis_desde", label: "Período de análisis — Desde (DD-MM-AAAA)", type: "text", required: true,
             validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
-          { path: "paso1.periodo_analisis_hasta", label: "Hasta (DD-MM-AAAA)", type: "text",
+          { path: "paso1.periodo_analisis_hasta", label: "Hasta (DD-MM-AAAA)", type: "text", required: true,
             validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
         ],
       },
