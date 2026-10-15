@@ -136,7 +136,7 @@ es `ros-roe-generator-backend`). Se trabaja en `dev` y se prueba con el servidor
 backend (`deploy\pruebas\Gereo-local.cmd`), que sirve estos mismos archivos en
 `http://127.0.0.1:8001`.
 
-Para pasar un cambio a producción (no hay rama `main`: se publica `dev`), desde el repo
-`iac-gereo`: `./publicar.sh frontend` (o `todo`). Arma un zip de `dev` con `git archive`, CodeBuild
+Para pasar un cambio a producción: mergear `dev` → `main` y, desde el repo `iac-gereo`,
+`./publicar.sh frontend` (o `todo`). Arma un zip de `main` con `git archive`, CodeBuild
 construye la imagen con el [`Dockerfile`](Dockerfile) y el servicio se redespliega sin
 corte. Detalle en el README de `iac-gereo`.
