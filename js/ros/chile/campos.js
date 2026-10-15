@@ -174,8 +174,8 @@
       {
         titulo: "Paso 3 — Adjuntar archivos en formato digital",
         campos: [
-          { path: "paso3.descripcion", label: "Descripción", type: "text", max: 40, full: true },
-          { path: "paso3.tipo_producto", label: "Tipo Producto", type: "text" },
+          // En el portal cada archivo se sube con su descripción (obligatoria); los archivos son opcionales.
+          { path: "paso3.descripcion", label: "Descripción del archivo", type: "text", full: true },
         ],
       },
       { titulo: "Anexo A — Señales de alerta evaluadas", reglas: true },
