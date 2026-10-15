@@ -1,23 +1,16 @@
-# GEREO — frontend (GitHub Pages)
+# GEREO — frontend
 
-Frontend **estático** del Generador de ROS y ROE. Se publica en **GitHub Pages**, por
-lo que tiene una **URL fija** que el equipo usa para entrar (no cambia entre reinicios).
+Frontend **estático** del Generador de ROS y ROE (HTML/CSS/JS puro, sin build). En
+producción lo sirve un contenedor **nginx** en AWS, detrás del **mismo balanceador** que
+el backend, en **https://gereo.global66.com**.
 
 El procesamiento (consulta a la base de datos, reglas, IA, PDF/XLSX) ocurre en el
-**backend** (FastAPI), que corre en el PC de un analista y se expone por un **túnel
-Cloudflare**. La URL del backend **sí cambia** en cada arranque; por eso NO está
-incrustada aquí: se lee de [`config.json`](config.json), que el lanzador del PC actualiza
-y publica en cada arranque. Así, el usuario siempre entra por la misma URL de Pages y el
-frontend descubre solo dónde está el backend.
+**backend** (FastAPI). Como ambos comparten origen, el frontend llama a la API con rutas
+relativas: no hay URL de backend que configurar ni CORS.
 
 ```
-Usuario → https://amondinelli-g66.github.io/ros-roe-generator/   (fijo, GitHub Pages)
-                     │  lee config.json → backend actual
-                     ▼
-          https://xxxx.trycloudflare.com   (cambiante, túnel al PC)
-                     │
-                     ▼
-             FastAPI + BD (VPN) en el PC anfitrión
+navegador ─HTTPS─> ALB (gereo.global66.com) ─┬─ /config /generar* /auth/* /api/v1/* ... ─> backend (FastAPI)
+                                             └─ todo lo demás ─────────────────────────> este frontend (nginx)
 ```
 
 El backend es el **repo hermano** `ros-roe-generator-backend/`, en la carpeta de al lado
@@ -34,7 +27,6 @@ predecible, y lo compartido está separado de lo específico:
 ```
 ros-roe-generator/
 ├── index.html            # una sola página: login, asistente, formularios y modal
-├── config.json           # { "backend": "<url del túnel>" } — la publica el lanzador del PC
 ├── css/gereo.css         # TODO el estilo (el HTML no lleva CSS embebido)
 ├── assets/               # favicon.svg · global66-cs-logo.webp
 ├── js/
@@ -50,22 +42,22 @@ ros-roe-generator/
 │   │   └── argentina/campos.js   # ===== campos del ROS de Argentina =====
 │   └── roe/
 │       └── chile/formulario.js   # ===== formulario del ROE de Chile =====
-└── .nojekyll             # sitio estático puro (sin procesamiento Jekyll de Pages)
+├── nginx.conf            # servidor de la imagen de producción
+└── Dockerfile            # imagen nginx para ECS Fargate
 ```
 
 | Archivo | Qué es |
 |---|---|
 | `index.html` | La página: barra superior, login, asistente de 3 pasos, los dos formularios, el aviso de "servicio aún no disponible" y el cascarón del modal. Sin lógica: solo estructura y el orden de los `<script defer>`. |
 | `css/gereo.css` | Hoja de estilos única (paleta Global66: navy + naranja). Va en un archivo porque la CSP del backend no permite estilos ni scripts inline. |
-| `js/comun/nucleo.js` | Los cimientos: crea `window.GEREO`, resuelve la URL del backend, hace el login con Google, guarda la sesión (`Authorization: Bearer` en `sessionStorage`), controla la inactividad, memoiza la única llamada a `/config` y expone el **registro de formularios**. |
+| `js/comun/nucleo.js` | Los cimientos: crea `window.GEREO`, envuelve las llamadas a la API, hace el login con Google, guarda la sesión (`Authorization: Bearer` en `sessionStorage`), controla la inactividad, memoiza la única llamada a `/config` y expone el **registro de formularios**. |
 | `js/comun/asistente.js` | El wizard y nada más: el paso a paso, los botones de país/documento, el banner compartido y el **despacho** al formulario del documento elegido. No conoce ningún formulario en concreto. |
 | `js/comun/select-ui.js` | Reemplaza la lista desplegable nativa de cada `<select>` por una propia (el menú del sistema no se puede estilar de forma consistente). El `<select>` original queda oculto como fuente de verdad del valor, así que `.value` y el evento `change` siguen funcionando igual. Se aplica también a los `<select>` que aparecen después (MutationObserver). |
 | `js/ros/formulario.js` | El formulario ROS estándar: segmento B2B/B2C, ID, fechas, vinculados; envía a `/generar`, guarda el análisis y abre el modal; descarga el PDF editado contra `/generar-pdf-editado`. |
 | `js/ros/modal.js` | El **motor** del modal de revisión/edición: arma los campos, valida formato en vivo y publica `window.RosModal`. No sabe qué campos tiene cada país. |
 | `js/ros/<pais>/campos.js` | El **esquema de campos** de ese ROS: secciones, etiquetas, opciones y máximos. Espejo del `fields.py` y de la plantilla del backend. |
 | `js/roe/chile/formulario.js` | Formulario propio del ROE de Chile (año + trimestre + sociedad) contra `/generar-roe-chile`; recibe los XLSX en base64 y dispara la descarga. |
-| `config.json` | `{ "backend": "<url del túnel>" }`. **Lo actualiza el lanzador del PC** en cada arranque; no editar a mano salvo emergencia. |
-| `.nojekyll` | Evita el procesamiento Jekyll de GitHub Pages (sitio estático puro). |
+| `nginx.conf` · `Dockerfile` | La imagen de producción: nginx sin privilegios en el puerto 8080 con los estáticos tal cual están en el repo. |
 
 ## Cómo se agrega un proceso (los dos registros)
 
@@ -120,40 +112,31 @@ Todos llevan `defer`, así que se ejecutan en ese orden, con el DOM ya parseado 
 
 ## Cómo se conecta con el backend
 
-- El frontend detecta que está en `*.github.io` y lee `config.json` para saber la URL del
-  backend. En modo local (servido por el propio backend) usa el mismo origen y no lee
-  `config.json`.
-- La sesión viaja como `Authorization: Bearer <token>` (no cookies), por lo que funciona
-  entre dominios sin depender de cookies de terceros. El token vive en `sessionStorage`
+- Siempre en el **mismo origen**: en producción, el balanceador manda las rutas de la API
+  al backend y el resto a este frontend; en local, el propio backend sirve estos archivos.
+  Las llamadas a la API son rutas relativas (`GEREO.api("/config")`).
+- La sesión viaja como `Authorization: Bearer <token>`. El token vive en `sessionStorage`
   (por pestaña) y se borra al cerrar sesión.
-- El login con Google ocurre en ESTA página (origen fijo), así que el *Origen de
-  JavaScript autorizado* en Google Cloud Console se registra **una sola vez**.
-- Si el backend está apagado o el `config.json` todavía no tiene una URL válida, la
-  pantalla de login lo dice ("el servidor aún no está disponible") en vez de fallar en
-  silencio.
+- Si el backend no responde, la pantalla de login lo dice ("no se pudo contactar al
+  servidor") en vez de fallar en silencio.
 
 ## Requisitos en Google Cloud Console (una vez)
 
-En el cliente OAuth, agregar como **Origen de JavaScript autorizado**:
+En el cliente OAuth, agregar como **Origen de JavaScript autorizado** el de producción
+(el origen es el dominio, sin ruta):
 
 ```
-https://amondinelli-g66.github.io
+https://gereo.global66.com
 ```
-
-(el origen es el dominio, sin la ruta del repo). Con esto el login deja de necesitar
-re-registro cada vez que cambia la URL del túnel.
 
 ## Publicación
 
 Este directorio es un repositorio propio (`amondinelli-g66/ros-roe-generator`; el backend
-es `ros-roe-generator-backend`). **Settings → Pages** está configurado con la rama `main` y
-la carpeta raíz, y GitHub sirve el sitio en
-`https://amondinelli-g66.github.io/ros-roe-generator/`.
+es `ros-roe-generator-backend`). Se trabaja en `dev` y se prueba con el servidor local del
+backend (`deploy\pruebas\Gereo-local.cmd`), que sirve estos mismos archivos en
+`http://127.0.0.1:8001`.
 
-Publicar un cambio es, por lo tanto, **`git push` a `main`**: Pages se actualiza solo
-(tarda ~1 min). Antes de publicar, prueba los cambios con el servidor local del backend
-(`deploy\local.cmd`), que sirve estos mismos archivos en `http://127.0.0.1:8001`.
-
-> El backend autoriza el **dominio** `https://amondinelli-g66.github.io` (sin la ruta), así que
-> este mismo origen sirve para futuras automatizaciones publicadas como otros repos de proyecto
-> bajo la misma cuenta.
+Para pasar un cambio a producción: mergear `dev` → `main` y, desde el repo `iac-gereo`,
+`./publicar.sh frontend` (o `todo`). Arma un zip de `main` con `git archive`, CodeBuild
+construye la imagen con el [`Dockerfile`](Dockerfile) y el servicio se redespliega sin
+corte. Detalle en el README de `iac-gereo`.

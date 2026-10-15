@@ -5,9 +5,9 @@
 # nginx + los archivos tal cual están en el repo.
 #
 # Va detrás del MISMO balanceador que el backend (gereo.global66.com), no en un
-# dominio aparte. Por eso `js/comun/nucleo.js` resuelve la API contra el mismo
-# origen (solo lee config.json cuando el host termina en .github.io) y CORS
-# directamente no existe: el navegador nunca ve dos orígenes.
+# dominio aparte. Por eso `js/comun/nucleo.js` llama a la API con rutas
+# relativas (mismo origen) y CORS directamente no existe: el navegador nunca ve
+# dos orígenes.
 FROM nginx:1.27-alpine
 
 # Nginx corre como root solo para leer la config y luego baja a `nginx`; acá se
@@ -27,10 +27,7 @@ RUN deluser nginx 2>/dev/null; \
 
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Solo los activos que sirve la página. Nada de README, ni .git, ni config.json:
-# ese archivo es exclusivo del despliegue en GitHub Pages (lleva la URL del
-# túnel del PC) y aquí, con el backend en el mismo origen, sobra — peor,
-# apuntaría a un túnel muerto si alguien lo copiara sin pensar.
+# Solo los activos que sirve la página. Nada de README ni .git.
 COPY index.html /usr/share/nginx/html/
 COPY css/    /usr/share/nginx/html/css/
 COPY js/     /usr/share/nginx/html/js/

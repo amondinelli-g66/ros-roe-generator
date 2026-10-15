@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- CSP por meta: GitHub Pages no permite fijar cabeceras, así que la política va
-       aquí. connect-src incluye el backend en el túnel (Cloudflare, subdominio
-       cambiante -> comodín) y Google Identity Services. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://*.trycloudflare.com https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
+  <!-- CSP por meta: el nginx del frontend no fija cabeceras de CSP, así que la
+       política va aquí. connect-src: el propio origen (la API) y Google Identity
+       Services. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <!-- Título neutro hasta iniciar sesión; js/comun/nucleo.js lo cambia tras autenticar. -->
   <title>Acceso · GEREO</title>
