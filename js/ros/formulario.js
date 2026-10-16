@@ -9,6 +9,9 @@
  *
  * Qué hace:
  *   - Botones de segmento B2B/B2C: gatillan qué consulta se hace en la BD.
+ *   - Origen del reporte Caso / Oficio (solo documentos que lo admiten, hoy
+ *     Chile · ROS): el oficio usa el extracto completo de movimientos, acepta
+ *     fechas con día y devuelve además un XLSX con esos movimientos.
  *   - Vinculados (mostrar/ocultar, conteo y máximo que informa el backend).
  *   - Envío a /generar y guardado del análisis (ros_doc) en sessionStorage.
  *   - Apertura del modal de revisión (window.RosModal) y descarga del PDF
@@ -73,8 +76,52 @@
     return segInput.value && document.querySelector(".seg.no-admitido") !== null;
   }
 
+  // ------------------------------------------------------------------- //
+  // Origen del reporte (Caso / Oficio). Un caso analiza los abonos del
+  // cliente; un oficio, todos sus movimientos en el rango exacto que pide el
+  // requerimiento, por eso las fechas admiten día (dd/mm/aaaa).
+  // ------------------------------------------------------------------- //
+  var origEls = document.querySelectorAll("[data-origen]");
+  var origInput = $("origen");
+  var TEXTOS_ORIGEN = {
+    CASO: {
+      hint: "Analiza los abonos que recibió el cliente.",
+      ini: "Mes/año, ej: 02/2025", fin: "Si se omite, usa el mes/año actual.",
+      phIni: "mm/aaaa", phFin: "mm/aaaa (actual)",
+    },
+    OFICIO: {
+      hint: "Usa todos los movimientos del cliente (ingresos y egresos) del período del "
+        + "oficio y entrega además el XLSX con esos movimientos.",
+      ini: "Día/mes/año, ej: 01/01/2022", fin: "Día/mes/año. Si se omite, hasta hoy.",
+      phIni: "dd/mm/aaaa", phFin: "dd/mm/aaaa (hoy)",
+    },
+  };
+
+  function aplicarOrigen(origen) {
+    var t = TEXTOS_ORIGEN[origen] || TEXTOS_ORIGEN.CASO;
+    origInput.value = TEXTOS_ORIGEN[origen] ? origen : "CASO";
+    origEls.forEach(function (x) { x.classList.toggle("sel", x.dataset.origen === origInput.value); });
+    $("origen-hint").textContent = t.hint;
+    $("hint-fecha-inicio").textContent = t.ini;
+    $("hint-fecha-fin").textContent = t.fin;
+    $("fecha_inicio").placeholder = t.phIni;
+    $("fecha_fin").placeholder = t.phFin;
+  }
+
   var form = $("form");
   var btn = $("btn");
+  var btnXlsx = $("btn-xlsx");
+
+  // El XLSX del oficio viaja en base64 dentro del análisis guardado.
+  function descargarXlsx(analisis) {
+    if (!analisis || !analisis.xlsx_base64) return;
+    var bin = atob(analisis.xlsx_base64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    descargarBlob(new Blob([bytes], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }), analisis.xlsx_nombre || "Oficio_movimientos.xlsx");
+  }
   var btnVerAnalisis = $("btn-ver-analisis");
   var btnAddVinc = $("btn-add-vinc"), btnDelVinc = $("btn-del-vinc");
   var vincBox = $("vinc-box"), vincTa = $("vinculados");
@@ -113,6 +160,7 @@
           body: JSON.stringify({
             pais: ctxEnvio.pais, customer_id: ctxEnvio.customerId, ros_doc: doc,
             fecha_inicio: s.fecha_inicio, fecha_fin: s.fecha_fin, vinculados: s.vinculados, segmento: s.segmento,
+            origen: s.origen,
           }),
         })
           .then(function (resp) {
@@ -194,6 +242,17 @@
       });
     });
 
+    origEls.forEach(function (b) {
+      b.addEventListener("click", function () {
+        aplicarOrigen(b.dataset.origen);
+        GEREO.limpiarBanner();
+        borrarAnalisis();
+        btnVerAnalisis.hidden = true;
+        btnXlsx.hidden = true;
+      });
+    });
+    btnXlsx.addEventListener("click", function () { descargarXlsx(leerAnalisis()); });
+
     btnAddVinc.addEventListener("click", function () {
       vincBox.hidden = false; btnAddVinc.hidden = true; vincTa.focus();
     });
@@ -208,6 +267,7 @@
       GEREO.limpiarBanner();
       borrarAnalisis();
       btnVerAnalisis.hidden = true;
+      btnXlsx.hidden = true;
     });
 
     btnVerAnalisis.addEventListener("click", function () {
@@ -217,7 +277,11 @@
 
     // Al cargar la vista, si ya había un análisis guardado (p. ej. se cerró el
     // modal y no se tocó el formulario), deja "Ver información" visible.
-    if (leerAnalisis()) btnVerAnalisis.hidden = false;
+    var previo = leerAnalisis();
+    if (previo) {
+      btnVerAnalisis.hidden = false;
+      btnXlsx.hidden = !previo.xlsx_base64;
+    }
 
     form.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -231,6 +295,7 @@
       }
       GEREO.ocultarBanner();
       btnVerAnalisis.hidden = true;
+      btnXlsx.hidden = true;
       borrarAnalisis();
       btn.disabled = true;
       btn.textContent = "Analizando… (consultando la base de datos)";
@@ -247,9 +312,16 @@
             data.solicitud = {
               fecha_inicio: form.fecha_inicio.value, fecha_fin: form.fecha_fin ? form.fecha_fin.value : "",
               vinculados: form.vinculados ? form.vinculados.value : "", segmento: form.segmento.value,
+              origen: origInput.value,
             };
             guardarAnalisis(data);
             btnVerAnalisis.hidden = false;
+            if (data.xlsx_base64) {
+              // Oficio: el extracto de movimientos se descarga de inmediato y
+              // queda disponible en «Descargar movimientos (XLSX)».
+              btnXlsx.hidden = false;
+              descargarXlsx(data);
+            }
             GEREO.mostrarBanner("ok", "Análisis listo",
               " Revisa y edita la información antes de descargar el PDF. Puedes cerrar esta "
               + "ventana y volver a abrirla con «Ver información».");
@@ -291,6 +363,10 @@
     $("btn-add-vinc").hidden = false;
     resetSegmento();   // el tipo de cliente (B2B/B2C) es de OTRO documento
     if (ctx.segmentoFijo) aplicarSegmentoFijo(ctx.segmentoFijo);
+    // Origen Caso / Oficio solo donde el backend lo admite; siempre parte en Caso.
+    $("origen-zona").hidden = !ctx.admiteOficio;
+    aplicarOrigen("CASO");
+    btnXlsx.hidden = true;
   }
 
   // ------------------------------------------------------------------- //

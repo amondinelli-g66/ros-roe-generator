@@ -35,6 +35,8 @@
   // Lo declara el backend en /config -> documentos[].segmento_fijo, para no
   // hardcodear países acá.
   var SEGMENTO_FIJO = {};
+  // Documentos cuyo ROS puede venir de un OFICIO (selector Caso / Oficio).
+  var ADMITE_OFICIO = new Set();
   // Qué formulario muestra cada documento: "ros" (estándar) o "roe-chile", etc.
   var FORMULARIOS = {};
   // Formulario cuando el backend no dice otra cosa: espejo exacto del
@@ -187,6 +189,7 @@
               pais: paisSel, tipo: tipoSel, clave: clave,
               usaVinculados: USA_VINC.has(clave),
               segmentoFijo: SEGMENTO_FIJO[clave] || null,
+              admiteOficio: ADMITE_OFICIO.has(clave),
             });
           }
         } else {
@@ -211,6 +214,8 @@
         DISPONIBLES = new Set(cfg.documentos.filter(function (d) { return d.disponible; })
           .map(function (d) { return d.pais + "|" + d.tipo; }));
         USA_VINC = new Set(cfg.documentos.filter(function (d) { return d.usa_vinculados; })
+          .map(function (d) { return d.pais + "|" + d.tipo; }));
+        ADMITE_OFICIO = new Set(cfg.documentos.filter(function (d) { return d.admite_oficio; })
           .map(function (d) { return d.pais + "|" + d.tipo; }));
         FORMULARIOS = {};
         SEGMENTO_FIJO = {};
