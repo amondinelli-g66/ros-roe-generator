@@ -260,12 +260,13 @@
     return prefijo + (resto ? " " + centenasEnLetras(resto) : "");
   }
 
+  // Solo el número en letras, SIN el nombre de la moneda: eso ya lo dice el
+  // campo "Moneda de origen del producto" al lado.
   function montoEnLetras(valor) {
     if (valor === "" || valor == null) return "";
     var n = Math.round(Number(valor));
     if (!isFinite(n) || isNaN(n) || n < 0) return "";
-    var moneda = n === 1 ? "peso argentino" : "pesos argentinos";
-    if (n === 0) return "cero " + moneda;
+    if (n === 0) return "cero";
 
     var partes = [];
     var billones = Math.floor(n / 1e12), resto = n % 1e12;
@@ -275,8 +276,9 @@
     if (millones) partes.push(apocopar(milesEnLetras(millones)) + " " + (millones === 1 ? "millón" : "millones"));
     if (resto) partes.push(milesEnLetras(resto));
 
-    var texto = apocopar(partes.join(" ").trim());
-    return (texto + " " + moneda).trim();
+    // Sin sustantivo detrás (no hay moneda): "veintiuno", no "veintiún" — el
+    // apócope solo aplica antes de mil/millón/billón, ya resuelto arriba.
+    return partes.join(" ").trim();
   }
 
   // "Monto en letras" no lo edita la persona (queda disabled en el modal, ver
@@ -420,12 +422,10 @@
             errMsg: "Formato esperado: XX-XXXXXXXX-X (11 dígitos)." },
         ].concat(camposDomicilio("persona_fisica"), camposVinculos("persona_fisica")),
       });
-    } else {
-      secciones.push({
-        titulo: "3 — Datos de la persona física",
-        avisoFijo: obtener(doc, "persona_fisica.mensaje"),
-      });
     }
+    // Si no aplica, la sección NO se muestra (ni título ni aviso): el
+    // reportado es de una sola nacionalidad a la vez, así que mostrar el
+    // título de la variante que no corresponde solo confundía.
 
     if (obtener(doc, "persona_fisica_extranjera.aplica")) {
       var extranjera = [
@@ -449,12 +449,8 @@
         camposVinculos("persona_fisica_extranjera")
       );
       secciones.push({ titulo: "3 — Datos de la persona física extranjera", campos: extranjera });
-    } else {
-      secciones.push({
-        titulo: "3 — Datos de la persona física extranjera",
-        avisoFijo: obtener(doc, "persona_fisica_extranjera.mensaje"),
-      });
     }
+    // Idem: si no aplica, no se muestra ni el título ni el aviso.
 
     // --- Sección 4 ---
     secciones.push({
