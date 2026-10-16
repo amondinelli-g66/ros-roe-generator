@@ -113,16 +113,6 @@
             <input type="hidden" id="tipo_documento" name="tipo_documento">
             <input type="hidden" id="segmento" name="segmento">
 
-            <label>Tipo de cliente</label>
-            <div class="choice-grid segmentos">
-              <button type="button" class="choice seg" data-segmento="B2B">B2B
-                <span class="sub">Persona jurídica</span></button>
-              <button type="button" class="choice seg" data-segmento="B2C">B2C
-                <span class="sub">Persona natural</span></button>
-            </div>
-            <div class="hint">La búsqueda en la base de datos se hace solo con las consultas
-              del tipo de cliente elegido.</div>
-
             <!-- Origen del reporte: solo en los documentos que admiten oficio
                  (/config -> documentos[].admite_oficio; hoy, Chile · ROS). -->
             <div id="origen-zona" hidden>
@@ -136,6 +126,16 @@
               </div>
               <div class="hint" id="origen-hint">Analiza los abonos que recibió el cliente.</div>
             </div>
+
+            <label>Tipo de cliente</label>
+            <div class="choice-grid segmentos">
+              <button type="button" class="choice seg" data-segmento="B2B">B2B
+                <span class="sub">Persona jurídica</span></button>
+              <button type="button" class="choice seg" data-segmento="B2C">B2C
+                <span class="sub">Persona natural</span></button>
+            </div>
+            <div class="hint">La búsqueda en la base de datos se hace solo con las consultas
+              del tipo de cliente elegido.</div>
 
             <div id="ros-datos-zona">
               <label for="customer_id">ID de cliente</label>
