@@ -12,7 +12,7 @@
  *   RosModal.abrir(doc, ctx, callbacks)
  *     doc: el ros_doc (se muta in-place con cada edición)
  *     ctx: {pais, tipoDocumento, customerId}
- *     callbacks: {onChange(doc), onDescargar(doc, ctx)}
+ *     callbacks: {onChange(doc), onDescargar(doc, ctx), onEnviarAprobacion(doc, ctx, listo)}
  *   RosModal.cerrar()
  *   RosModal.setMensaje(texto, esError)
  *
@@ -36,6 +36,9 @@
   var btnCerrarX = document.getElementById("modal-cerrar");
   var btnCancelar = document.getElementById("modal-cancelar");
   var btnDescargar = document.getElementById("modal-descargar");
+  // "Enviar a aprobación": guarda el caso y lo manda por Slack a los
+  // aprobadores del país (solo ROS). Se habilita junto con la descarga.
+  var btnAprobacion = document.getElementById("modal-aprobacion");
 
   var _doc = null, _ctx = null, _callbacks = {};
 
@@ -236,6 +239,35 @@
     return false;
   }
 
+  function opcionesDe(campo, doc) {
+    return (typeof campo.options === "function" ? campo.options(doc) : campo.options) || [];
+  }
+
+  function llenarOpciones(select, opciones) {
+    select.innerHTML = "";
+    opciones.forEach(function (op) {
+      select.appendChild(el("option", { value: op, text: op }));
+    });
+  }
+
+  // Desplegable con opciones dependientes: si cambiaron, se rehacen; si el valor
+  // elegido ya no está entre ellas, se borra (en el input y en el documento).
+  function refrescarOpciones(wrapper, campo, doc) {
+    if (campo.type !== "select" || typeof campo.options !== "function") return;
+    var select = wrapper.querySelector("select");
+    if (!select) return;
+    var nuevas = opcionesDe(campo, doc);
+    var actuales = Array.prototype.map.call(select.options, function (o) { return o.value; });
+    if (nuevas.join("|") === actuales.join("|")) return;
+    var valor = obtener(doc, campo.path) || "";
+    llenarOpciones(select, nuevas);
+    if (nuevas.indexOf(valor) < 0) {
+      valor = "";
+      asignar(doc, campo.path, "");
+    }
+    select.value = valor;
+  }
+
   function crearCampo(campo, doc, ctx) {
     var esCheckbox = campo.type === "checkbox";
     var wrapper = el("div", { class: "campo" + (campo.full ? " full" : "") + (esCheckbox ? " campo-check" : "") });
@@ -247,9 +279,9 @@
 
     if (campo.type === "select") {
       input = el("select", { id: "f_" + campo.path });
-      (campo.options || []).forEach(function (op) {
-        input.appendChild(el("option", { value: op, text: op }));
-      });
+      // `options` puede ser una función del documento (p. ej. las comunas de la
+      // región elegida): revisarCondicionales la vuelve a evaluar en cada cambio.
+      llenarOpciones(input, opcionesDe(campo, doc));
       input.value = valorActual || "";
     } else if (campo.type === "textarea" || campo.type === "list") {
       input = el("textarea", { id: "f_" + campo.path, rows: campo.type === "list" ? 3 : 5 });
@@ -535,6 +567,7 @@
     // puede volverse obligatorio/opcional u ocultarse por OTRO campo distinto
     // del suyo (p. ej. "tipo_instrumento" según "exteriorización_voluntaria").
     _camposRenderizados.forEach(function (item) {
+      refrescarOpciones(item.wrapper, item.campo, doc);
       actualizarVisibilidad(item.wrapper, item.campo, doc);
       actualizarValidez(item.wrapper, item.campo, doc);
     });
@@ -548,6 +581,7 @@
       function (w) { return !estaOculto(w); }
     ).length;
     btnDescargar.disabled = invalidos > 0;
+    if (btnAprobacion) btnAprobacion.disabled = invalidos > 0;
   }
 
   // ------------------------------------------------------------------- //
@@ -710,6 +744,7 @@
   }
 
   function abrir(doc, ctx, callbacks) {
+    if (btnAprobacion) btnAprobacion.hidden = !(callbacks && callbacks.onEnviarAprobacion);
     _doc = doc; _ctx = ctx; _callbacks = callbacks || {};
     tagsEl.innerHTML = "";
     [ctx.tipoDocumento || "ROS", ctx.pais || ""].forEach(function (t) {
@@ -744,6 +779,13 @@
     if (btnDescargar.disabled || !_doc || !_callbacks.onDescargar) return;
     _callbacks.onDescargar(_doc, _ctx);
   });
+  if (btnAprobacion) {
+    btnAprobacion.addEventListener("click", function () {
+      if (btnAprobacion.disabled || !_doc || !_callbacks.onEnviarAprobacion) return;
+      btnAprobacion.disabled = true;   // un solo envío por clic
+      _callbacks.onEnviarAprobacion(_doc, _ctx, function () { actualizarBotonDescargar(); });
+    });
+  }
 
   window.RosModal = {
     // API pública de siempre (la usa js/ros/formulario.js).

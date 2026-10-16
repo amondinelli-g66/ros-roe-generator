@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- CSP por meta: GitHub Pages no permite fijar cabeceras, así que la política va
-       aquí. connect-src incluye el backend en el túnel (Cloudflare, subdominio
-       cambiante -> comodín) y Google Identity Services. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://*.trycloudflare.com https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
+  <!-- CSP por meta: el nginx del frontend no fija cabeceras de CSP, así que la
+       política va aquí. connect-src: el propio origen (la API) y Google Identity
+       Services. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; img-src 'self' data: https://*.googleusercontent.com; base-uri 'self'; frame-ancestors 'none'; object-src 'none'">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
   <!-- Título neutro hasta iniciar sesión; js/comun/nucleo.js lo cambia tras autenticar. -->
   <title>Acceso · GEREO</title>
@@ -113,6 +113,20 @@
             <input type="hidden" id="tipo_documento" name="tipo_documento">
             <input type="hidden" id="segmento" name="segmento">
 
+            <!-- Origen del reporte: solo en los documentos que admiten oficio
+                 (/config -> documentos[].admite_oficio; hoy, Chile · ROS). -->
+            <div id="origen-zona" hidden>
+              <input type="hidden" id="origen" name="origen" value="CASO">
+              <label>Origen del reporte</label>
+              <div class="choice-grid segmentos">
+                <button type="button" class="choice orig sel" data-origen="CASO">Caso
+                  <span class="sub">Análisis de un cliente</span></button>
+                <button type="button" class="choice orig" data-origen="OFICIO">Oficio
+                  <span class="sub">Requerimiento recibido por email</span></button>
+              </div>
+              <div class="hint" id="origen-hint">Analiza los abonos que recibió el cliente.</div>
+            </div>
+
             <label>Tipo de cliente</label>
             <div class="choice-grid segmentos">
               <button type="button" class="choice seg" data-segmento="B2B">B2B
@@ -134,13 +148,13 @@
                   <label for="fecha_inicio">Fecha de inicio</label>
                   <input type="text" id="fecha_inicio" name="fecha_inicio"
                          placeholder="mm/aaaa" autocomplete="off">
-                  <div class="hint">Mes/año, ej: 02/2025</div>
+                  <div class="hint" id="hint-fecha-inicio">Mes/año, ej: 02/2025</div>
                 </div>
                 <div>
                   <label for="fecha_fin">Fecha de fin <span style="text-transform:none;font-weight:400">(opcional)</span></label>
                   <input type="text" id="fecha_fin" name="fecha_fin"
                          placeholder="mm/aaaa (actual)" autocomplete="off">
-                  <div class="hint">Si se omite, usa el mes/año actual.</div>
+                  <div class="hint" id="hint-fecha-fin">Si se omite, usa el mes/año actual.</div>
                 </div>
               </div>
 
@@ -163,6 +177,7 @@
               <div class="acciones-form">
                 <button type="submit" id="btn">Iniciar análisis</button>
                 <button type="button" id="btn-ver-analisis" class="btn-sec" hidden>Ver información</button>
+                <button type="button" id="btn-xlsx" class="btn-sec" hidden>Descargar movimientos (XLSX)</button>
               </div>
             </div>
           </form>
@@ -247,7 +262,8 @@
     <div class="modal-foot">
       <span id="modal-msg"></span>
       <button type="button" id="modal-cancelar" class="btn-sec">Cerrar</button>
-      <button type="button" id="modal-descargar">Descargar PDF</button>
+      <button type="button" id="modal-descargar" class="btn-sec">Descargar PDF</button>
+      <button type="button" id="modal-aprobacion" hidden>Enviar a aprobación</button>
     </div>
   </div>
 
@@ -267,8 +283,10 @@
   <script src="./js/comun/select-ui.js" defer></script>
   <script src="./js/comun/nucleo.js" defer></script>
   <script src="./js/ros/modal.js" defer></script>
+  <script src="./js/ros/chile/catalogos_uaf.js" defer></script>
   <script src="./js/ros/chile/campos.js" defer></script>
   <script src="./js/ros/colombia/campos.js" defer></script>
+  <script src="./js/ros/argentina/catalogos_uif.js" defer></script>
   <script src="./js/ros/argentina/campos.js" defer></script>
   <script src="./js/ros/formulario.js" defer></script>
   <script src="./js/roe/chile/formulario.js" defer></script>

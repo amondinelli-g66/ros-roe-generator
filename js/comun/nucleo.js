@@ -1,14 +1,11 @@
 /* =============================================================================
  * js/comun/nucleo.js — cimientos del cliente de GEREO: namespace, backend y sesión.
  *
- * Este frontend es ESTÁTICO y se publica en GitHub Pages (URL FIJA). El backend
- * (FastAPI) corre en el PC de un analista y se expone por un túnel Cloudflare
- * (URL CAMBIANTE). Como viven en orígenes distintos:
- *   - La URL del backend se lee de ./config.json (el lanzador del PC la actualiza
- *     y la publica en este repo en cada arranque). En modo local (servido por el
- *     propio backend) se usa el mismo origen y NO se lee config.json.
- *   - La sesión viaja como `Authorization: Bearer <token>` (no cookies), para no
- *     depender de cookies de terceros entre dominios. El token se guarda en
+ * Este frontend es ESTÁTICO y siempre comparte origen con el backend (FastAPI):
+ * en producción (https://gereo.global66.com) ambos van tras el mismo balanceador,
+ * y en local el propio backend sirve estos archivos. Por eso las llamadas a la
+ * API son rutas relativas, sin URL de backend que resolver.
+ *   - La sesión viaja como `Authorization: Bearer <token>`. El token se guarda en
  *     sessionStorage (por pestaña) y se borra al cerrar sesión.
  *
  * Orden: PRIMERO la autenticación. Nada del proyecto se muestra hasta que el
@@ -53,9 +50,8 @@
   var estadoTimer = null;
 
   // --------------------------------------------------------------------- //
-  // Backend + token de sesión
+  // Token de sesión
   // --------------------------------------------------------------------- //
-  var API_BASE = "";                 // "" = mismo origen (modo local)
   var TOKEN_KEY = "g66_token";
 
   function getToken() { try { return sessionStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; } }
@@ -89,28 +85,14 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
-  // fetch a la API: antepone la base del backend y agrega el token si lo hay.
+  // fetch a la API (mismo origen): agrega el token si lo hay.
   function api(path, opts) {
     opts = opts || {};
     var headers = opts.headers || {};
     var tok = getToken();
     if (tok) headers["Authorization"] = "Bearer " + tok;
     opts.headers = headers;
-    return fetch(API_BASE + path, opts);
-  }
-
-  // Resuelve la URL del backend antes de arrancar. Solo en GitHub Pages se lee
-  // config.json (lo publica el lanzador del PC). En cualquier otro origen (modo
-  // local servido por el backend) se usa el mismo origen.
-  function resolverBackend(cb) {
-    if (!/\.github\.io$/i.test(location.hostname)) { cb(); return; }
-    fetch("./config.json?t=" + Date.now(), { cache: "no-store" })
-      .then(function (r) { return r.json(); })
-      .then(function (c) {
-        API_BASE = (c && c.backend ? String(c.backend) : "").replace(/\/+$/, "");
-        cb();
-      })
-      .catch(function () { API_BASE = ""; cb(); });
+    return fetch(path, opts);
   }
 
   // --------------------------------------------------------------------- //
@@ -181,13 +163,6 @@
   // Arranque: consulta el estado de sesión
   // --------------------------------------------------------------------- //
   function iniciar() {
-    if (API_BASE === "" && /\.github\.io$/i.test(location.hostname)) {
-      // En Pages sin backend configurado todavía (config.json vacío).
-      soloVista("login");
-      mostrarLoginMsg("El servidor aún no está disponible. Pide a la persona " +
-        "que hospeda el servicio que lo encienda en su PC e inténtalo de nuevo.");
-      return;
-    }
     api("/auth/status", { headers: { "Accept": "application/json" } })
       .then(function (r) { return r.json(); })
       .then(function (st) {
@@ -199,10 +174,10 @@
         }
       })
       .catch(function () {
-        // Backend apagado / túnel caído / red.
+        // Backend caído / red.
         soloVista("login");
-        mostrarLoginMsg("No se pudo contactar al servidor. Verifica que el " +
-          "servicio esté encendido en el PC anfitrión e inténtalo de nuevo.");
+        mostrarLoginMsg("No se pudo contactar al servidor. Revisa tu conexión " +
+          "e inténtalo de nuevo en unos minutos.");
       });
   }
 
@@ -424,6 +399,6 @@
     if (bl) bl.addEventListener("click", function () { cerrarSesion(false); });
     var br = $("btn-relogin");
     if (br) br.addEventListener("click", function () { location.reload(); });
-    resolverBackend(iniciar);
+    iniciar();
   });
 })();
