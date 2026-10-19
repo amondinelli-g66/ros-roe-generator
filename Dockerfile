@@ -8,7 +8,7 @@
 # dominio aparte. Por eso `js/comun/nucleo.js` llama a la API con rutas
 # relativas (mismo origen) y CORS directamente no existe: el navegador nunca ve
 # dos orígenes.
-FROM nginx:1.27-alpine
+FROM public.ecr.aws/docker/library/nginx:1.27-alpine
 
 # Nginx corre como root solo para leer la config y luego baja a `nginx`; acá se
 # fija el UID/GID 10001 explícito para que el proceso que atiende peticiones no
