@@ -52,17 +52,18 @@
   var MONEDAS = ["pesos", "dolar", "euro", "libra", "bolivar", "bolivar fuerte", "otro tipo"];
 
   function schemaColombia(doc) {
-    var secciones = [
-      {
-        titulo: "1 — Información general del reporte",
-        campos: [
-          { path: "info_general.numero_reporte", label: "Número de reporte (ID interno AAAADDMMXX)", type: "text",
-            max: 200, required: true },
-          { path: "info_general.clase_reporte", label: "Clase de reporte", type: "select", required: true,
-            options: ["Reporte Inicial", "Corrección a reporte anterior", "Adición a reporte anterior"] },
-        ],
-      },
+    // ROI (operaciones intentadas): formulario "Operaciones Intentadas" de SIREL,
+    // sin clase de reporte, señales de alerta ni casillas de verificación.
+    var roi = obtener(doc, "tipo_reporte") === "INTENTADA";
+    var general = [
+      { path: "info_general.numero_reporte", label: "Número de reporte (AAAADDMMXXX; si se deja vacío, "
+        + "lo asigna la hoja Seguimiento ROS al aprobar)", type: "text", max: 200 },
     ];
+    if (!roi) {
+      general.push({ path: "info_general.clase_reporte", label: "Clase de reporte", type: "select", required: true,
+        options: ["Reporte Inicial", "Corrección a reporte anterior", "Adición a reporte anterior"] });
+    }
+    var secciones = [{ titulo: "1 — Información general del reporte", campos: general }];
 
     if (obtener(doc, "persona_juridica.aplica")) {
       secciones.push({
@@ -109,15 +110,15 @@
       secciones.push({ titulo: "3 — Persona natural", avisoFijo: obtener(doc, "persona_natural.mensaje") });
     }
 
-    secciones.push({
+    var detalle = {
       titulo: "4 — Detalle",
       campos: [
         { path: "detalle.periodo_desde", label: "Período de análisis — Desde (DD-MM-AAAA)", type: "text", required: true,
           validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
         { path: "detalle.periodo_hasta", label: "Hasta (DD-MM-AAAA)", type: "text", required: true,
           validate: function (v) { return !v || validarFecha(v, "-"); }, errMsg: "Formato esperado: DD-MM-AAAA." },
-        { path: "detalle.descripcion", label: "Descripción de la operación sospechosa", type: "textarea", full: true,
-          required: true },
+        { path: "detalle.descripcion", label: roi ? "Descripción de las operaciones intentadas"
+          : "Descripción de la operación sospechosa", type: "textarea", full: true, required: true },
         { path: "detalle.tematica", label: "Temática (delito fuente)", type: "select", full: true, options: TEMATICAS,
           required: true },
         { path: "detalle.senales_alerta", label: "Señales de alerta (máx. 200 caracteres cada una)", type: "bloques", full: true,
@@ -127,12 +128,33 @@
         { path: "detalle.moneda", label: "Moneda", type: "select", options: MONEDAS, required: true },
         { path: "detalle.notifico_autoridad", label: "¿Notificó a otra autoridad?", type: "checkbox" },
         { path: "detalle.personas_solicitadas", label: "¿Las personas fueron solicitadas por alguna entidad competente?", type: "checkbox" },
-        { path: "detalle.documentos_soporte", label: "¿Documentos de soporte de la operación sospechosa? (los anexos aún se cargan a mano)",
-          type: "checkbox" },
+        { path: "detalle.documentos_soporte", label: "¿Documentos de soporte de la operación sospechosa? "
+          + "(el robot adjunta el CSV de movimientos)", type: "checkbox" },
       ],
-    });
+    };
+    if (roi) {
+      var fuera = ["detalle.senales_alerta", "detalle.notifico_autoridad", "detalle.personas_solicitadas",
+        "detalle.documentos_soporte"];
+      detalle.campos = detalle.campos.filter(function (c) { return fuera.indexOf(c.path) < 0; });
+    }
+    secciones.push(detalle);
 
-    secciones.push({ titulo: "Anexo A — Señales de alerta evaluadas", reglas: true });
+    if (roi) {
+      var it = obtener(doc, "intentadas") || {};
+      var lineas = ["Intentos no concretados en el período: " + (it.total || 0)
+        + " (USD " + Math.round(it.total_usd || 0).toLocaleString("es-CO") + ")."];
+      (it.por_motivo || []).forEach(function (m) { lineas.push("• " + m.motivo + ": " + m.n); });
+      if ((it.indicadores || []).length) {
+        lineas.push("Indicadores de sospecha:");
+        it.indicadores.forEach(function (s) { lineas.push("• " + s); });
+      } else {
+        lineas.push("Sin indicadores de sospecha automáticos: fundamentar el reporte en la descripción.");
+      }
+      lineas.push("El detalle de cada intento va en el PDF (Anexo A) y en el CSV del caso.");
+      secciones.push({ titulo: "Anexo A — Operaciones intentadas", avisoFijo: lineas.join("\n") });
+    } else {
+      secciones.push({ titulo: "Anexo A — Señales de alerta evaluadas", reglas: true });
+    }
     return secciones;
   }
 

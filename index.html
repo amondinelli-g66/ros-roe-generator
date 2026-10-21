@@ -127,6 +127,20 @@
               <div class="hint" id="origen-hint">Analiza los abonos que recibió el cliente.</div>
             </div>
 
+            <!-- Tipo de reporte: solo en los documentos que ofrecen más de uno
+                 (/config -> documentos[].tipos_reporte; hoy, Colombia · ROS: ROS / ROI). -->
+            <div id="tiporep-zona" hidden>
+              <input type="hidden" id="tipo_reporte" name="tipo_reporte" value="ROS">
+              <label>Tipo de reporte</label>
+              <div class="choice-grid segmentos">
+                <button type="button" class="choice trep sel" data-tiporep="ROS">ROS
+                  <span class="sub">Operación sospechosa</span></button>
+                <button type="button" class="choice trep" data-tiporep="ROI">ROI
+                  <span class="sub">Operaciones intentadas</span></button>
+              </div>
+              <div class="hint" id="tiporep-hint">Analiza los envíos que el cliente realizó.</div>
+            </div>
+
             <label>Tipo de cliente</label>
             <div class="choice-grid segmentos">
               <button type="button" class="choice seg" data-segmento="B2B">B2B

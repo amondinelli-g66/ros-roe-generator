@@ -108,6 +108,24 @@
     $("fecha_fin").placeholder = t.phFin;
   }
 
+  // ------------------------------------------------------------------- //
+  // Tipo de reporte (Colombia: ROS / ROI). El ROI analiza los envíos que el
+  // cliente intentó y no se concretaron (devueltos, rechazados o con error).
+  // ------------------------------------------------------------------- //
+  var trepEls = document.querySelectorAll("[data-tiporep]");
+  var trepInput = $("tipo_reporte");
+  var TEXTOS_TIPOREP = {
+    ROS: "Analiza los envíos que el cliente realizó.",
+    ROI: "Analiza los envíos que el cliente intentó y no se concretaron (devueltos, rechazados "
+      + "o con error) y arma el reporte de Operaciones Intentadas de la UIAF.",
+  };
+
+  function aplicarTipoReporte(tipo) {
+    trepInput.value = TEXTOS_TIPOREP[tipo] ? tipo : "ROS";
+    trepEls.forEach(function (x) { x.classList.toggle("sel", x.dataset.tiporep === trepInput.value); });
+    $("tiporep-hint").textContent = TEXTOS_TIPOREP[trepInput.value];
+  }
+
   var form = $("form");
   var btn = $("btn");
   var btnXlsx = $("btn-xlsx");
@@ -160,7 +178,7 @@
           body: JSON.stringify({
             pais: ctxEnvio.pais, customer_id: ctxEnvio.customerId, ros_doc: doc,
             fecha_inicio: s.fecha_inicio, fecha_fin: s.fecha_fin, vinculados: s.vinculados, segmento: s.segmento,
-            origen: s.origen,
+            origen: s.origen, tipo_reporte: s.tipo_reporte,
           }),
         })
           .then(function (resp) {
@@ -253,6 +271,15 @@
     });
     btnXlsx.addEventListener("click", function () { descargarXlsx(leerAnalisis()); });
 
+    trepEls.forEach(function (b) {
+      b.addEventListener("click", function () {
+        aplicarTipoReporte(b.dataset.tiporep);
+        GEREO.limpiarBanner();
+        borrarAnalisis();
+        btnVerAnalisis.hidden = true;
+      });
+    });
+
     btnAddVinc.addEventListener("click", function () {
       vincBox.hidden = false; btnAddVinc.hidden = true; vincTa.focus();
     });
@@ -312,7 +339,7 @@
             data.solicitud = {
               fecha_inicio: form.fecha_inicio.value, fecha_fin: form.fecha_fin ? form.fecha_fin.value : "",
               vinculados: form.vinculados ? form.vinculados.value : "", segmento: form.segmento.value,
-              origen: origInput.value,
+              origen: origInput.value, tipo_reporte: trepInput.value,
             };
             guardarAnalisis(data);
             btnVerAnalisis.hidden = false;
@@ -366,6 +393,9 @@
     // Origen Caso / Oficio solo donde el backend lo admite; siempre parte en Caso.
     $("origen-zona").hidden = !ctx.admiteOficio;
     aplicarOrigen("CASO");
+    // Tipo de reporte (ROS / ROI) solo donde el backend lo ofrece; siempre parte en ROS.
+    $("tiporep-zona").hidden = !(ctx.tiposReporte && ctx.tiposReporte.length > 1);
+    aplicarTipoReporte("ROS");
     btnXlsx.hidden = true;
   }
 
