@@ -37,6 +37,8 @@
   var SEGMENTO_FIJO = {};
   // Documentos cuyo ROS puede venir de un OFICIO (selector Caso / Oficio).
   var ADMITE_OFICIO = new Set();
+  // Documentos con más de un tipo de reporte (Colombia · ROS: ROS / ROI).
+  var TIPOS_REPORTE = {};
   // Qué formulario muestra cada documento: "ros" (estándar) o "roe-chile", etc.
   var FORMULARIOS = {};
   // Formulario cuando el backend no dice otra cosa: espejo exacto del
@@ -190,6 +192,7 @@
               usaVinculados: USA_VINC.has(clave),
               segmentoFijo: SEGMENTO_FIJO[clave] || null,
               admiteOficio: ADMITE_OFICIO.has(clave),
+              tiposReporte: TIPOS_REPORTE[clave] || [],
             });
           }
         } else {
@@ -219,7 +222,9 @@
           .map(function (d) { return d.pais + "|" + d.tipo; }));
         FORMULARIOS = {};
         SEGMENTO_FIJO = {};
+        TIPOS_REPORTE = {};
         cfg.documentos.forEach(function (d) {
+          if (d.tipos_reporte && d.tipos_reporte.length > 1) TIPOS_REPORTE[d.pais + "|" + d.tipo] = d.tipos_reporte;
           FORMULARIOS[d.pais + "|" + d.tipo] = d.formulario || "ros";
           if (d.segmento_fijo) SEGMENTO_FIJO[d.pais + "|" + d.tipo] = d.segmento_fijo;
         });

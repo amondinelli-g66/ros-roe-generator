@@ -310,7 +310,7 @@
     .campo-check input{ width:auto; }
     .campo-check label{ margin:0; text-transform:none; font-weight:500; color:var(--ink); font-size:13px; }
     .aviso-fijo{ font-size:13px; color:#516070; background:#f4f7fa; border-radius:0 6px 6px 0;
-      border-left:3px solid var(--navy2); padding:10px 14px; margin:10px 0; line-height:1.5; }
+      border-left:3px solid var(--navy2); padding:10px 14px; margin:10px 0; line-height:1.5; white-space:pre-line; }
     .reglas-card{ background:#fbfcfe; border:1px solid var(--line); border-radius:12px;
       padding:2px 18px; margin:10px 0 4px; }
     .reglas-card details{ font-size:12.5px; }

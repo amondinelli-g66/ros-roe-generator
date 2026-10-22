@@ -77,15 +77,16 @@
   }
 
   // ------------------------------------------------------------------- //
-  // Origen del reporte (Caso / Oficio). Un caso analiza los abonos del
-  // cliente; un oficio, todos sus movimientos en el rango exacto que pide el
-  // requerimiento, por eso las fechas admiten día (dd/mm/aaaa).
+  // Origen del reporte (Caso / Oficio). Los dos analizan todos los movimientos
+  // del cliente y entregan el XLSX; el caso, por meses, y el oficio, en el rango
+  // exacto que pide el requerimiento, por eso sus fechas admiten día (dd/mm/aaaa).
   // ------------------------------------------------------------------- //
   var origEls = document.querySelectorAll("[data-origen]");
   var origInput = $("origen");
   var TEXTOS_ORIGEN = {
     CASO: {
-      hint: "Analiza los abonos que recibió el cliente.",
+      hint: "Analiza todos los movimientos del cliente (ingresos, egresos y cambios de "
+        + "moneda) y entrega además el XLSX con esos movimientos.",
       ini: "Mes/año, ej: 02/2025", fin: "Si se omite, usa el mes/año actual.",
       phIni: "mm/aaaa", phFin: "mm/aaaa (actual)",
     },
@@ -108,11 +109,32 @@
     $("fecha_fin").placeholder = t.phFin;
   }
 
+  // ------------------------------------------------------------------- //
+  // Tipo de reporte (Colombia: ROS / ROI). El ROS analiza las operaciones que
+  // el cliente realizó; el ROI, las mismas fuentes pero las que intentó y no se
+  // concretaron (rechazadas, devueltas, canceladas o declinadas).
+  // ------------------------------------------------------------------- //
+  var trepEls = document.querySelectorAll("[data-tiporep]");
+  var trepInput = $("tipo_reporte");
+  var TEXTOS_TIPOREP = {
+    ROS: "Analiza todas las operaciones que el cliente realizó (ingresos, egresos y cambios "
+      + "de moneda) y entrega además el XLSX con esas operaciones.",
+    ROI: "Analiza las operaciones que el cliente intentó y no se concretaron (remesas devueltas, "
+      + "pagos y P2P rechazados, compras con tarjeta declinadas...) y arma el reporte de "
+      + "Operaciones Intentadas de la UIAF.",
+  };
+
+  function aplicarTipoReporte(tipo) {
+    trepInput.value = TEXTOS_TIPOREP[tipo] ? tipo : "ROS";
+    trepEls.forEach(function (x) { x.classList.toggle("sel", x.dataset.tiporep === trepInput.value); });
+    $("tiporep-hint").textContent = TEXTOS_TIPOREP[trepInput.value];
+  }
+
   var form = $("form");
   var btn = $("btn");
   var btnXlsx = $("btn-xlsx");
 
-  // El XLSX del oficio viaja en base64 dentro del análisis guardado.
+  // El XLSX de movimientos viaja en base64 dentro del análisis guardado.
   function descargarXlsx(analisis) {
     if (!analisis || !analisis.xlsx_base64) return;
     var bin = atob(analisis.xlsx_base64);
@@ -120,7 +142,7 @@
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     descargarBlob(new Blob([bytes], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }), analisis.xlsx_nombre || "Oficio_movimientos.xlsx");
+    }), analisis.xlsx_nombre || "Movimientos.xlsx");
   }
   var btnVerAnalisis = $("btn-ver-analisis");
   var btnAddVinc = $("btn-add-vinc"), btnDelVinc = $("btn-del-vinc");
@@ -160,7 +182,7 @@
           body: JSON.stringify({
             pais: ctxEnvio.pais, customer_id: ctxEnvio.customerId, ros_doc: doc,
             fecha_inicio: s.fecha_inicio, fecha_fin: s.fecha_fin, vinculados: s.vinculados, segmento: s.segmento,
-            origen: s.origen,
+            origen: s.origen, tipo_reporte: s.tipo_reporte,
           }),
         })
           .then(function (resp) {
@@ -253,6 +275,15 @@
     });
     btnXlsx.addEventListener("click", function () { descargarXlsx(leerAnalisis()); });
 
+    trepEls.forEach(function (b) {
+      b.addEventListener("click", function () {
+        aplicarTipoReporte(b.dataset.tiporep);
+        GEREO.limpiarBanner();
+        borrarAnalisis();
+        btnVerAnalisis.hidden = true;
+      });
+    });
+
     btnAddVinc.addEventListener("click", function () {
       vincBox.hidden = false; btnAddVinc.hidden = true; vincTa.focus();
     });
@@ -312,12 +343,12 @@
             data.solicitud = {
               fecha_inicio: form.fecha_inicio.value, fecha_fin: form.fecha_fin ? form.fecha_fin.value : "",
               vinculados: form.vinculados ? form.vinculados.value : "", segmento: form.segmento.value,
-              origen: origInput.value,
+              origen: origInput.value, tipo_reporte: trepInput.value,
             };
             guardarAnalisis(data);
             btnVerAnalisis.hidden = false;
             if (data.xlsx_base64) {
-              // Oficio: el extracto de movimientos se descarga de inmediato y
+              // Caso u oficio: el extracto de movimientos se descarga de inmediato y
               // queda disponible en «Descargar movimientos (XLSX)».
               btnXlsx.hidden = false;
               descargarXlsx(data);
@@ -366,6 +397,9 @@
     // Origen Caso / Oficio solo donde el backend lo admite; siempre parte en Caso.
     $("origen-zona").hidden = !ctx.admiteOficio;
     aplicarOrigen("CASO");
+    // Tipo de reporte (ROS / ROI) solo donde el backend lo ofrece; siempre parte en ROS.
+    $("tiporep-zona").hidden = !(ctx.tiposReporte && ctx.tiposReporte.length > 1);
+    aplicarTipoReporte("ROS");
     btnXlsx.hidden = true;
   }
 
