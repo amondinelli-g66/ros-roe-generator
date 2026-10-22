@@ -77,15 +77,16 @@
   }
 
   // ------------------------------------------------------------------- //
-  // Origen del reporte (Caso / Oficio). Un caso analiza los abonos del
-  // cliente; un oficio, todos sus movimientos en el rango exacto que pide el
-  // requerimiento, por eso las fechas admiten día (dd/mm/aaaa).
+  // Origen del reporte (Caso / Oficio). Los dos analizan todos los movimientos
+  // del cliente y entregan el XLSX; el caso, por meses, y el oficio, en el rango
+  // exacto que pide el requerimiento, por eso sus fechas admiten día (dd/mm/aaaa).
   // ------------------------------------------------------------------- //
   var origEls = document.querySelectorAll("[data-origen]");
   var origInput = $("origen");
   var TEXTOS_ORIGEN = {
     CASO: {
-      hint: "Analiza los abonos que recibió el cliente.",
+      hint: "Analiza todos los movimientos del cliente (ingresos, egresos y cambios de "
+        + "moneda) y entrega además el XLSX con esos movimientos.",
       ini: "Mes/año, ej: 02/2025", fin: "Si se omite, usa el mes/año actual.",
       phIni: "mm/aaaa", phFin: "mm/aaaa (actual)",
     },
@@ -130,7 +131,7 @@
   var btn = $("btn");
   var btnXlsx = $("btn-xlsx");
 
-  // El XLSX del oficio viaja en base64 dentro del análisis guardado.
+  // El XLSX de movimientos viaja en base64 dentro del análisis guardado.
   function descargarXlsx(analisis) {
     if (!analisis || !analisis.xlsx_base64) return;
     var bin = atob(analisis.xlsx_base64);
@@ -138,7 +139,7 @@
     for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     descargarBlob(new Blob([bytes], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }), analisis.xlsx_nombre || "Oficio_movimientos.xlsx");
+    }), analisis.xlsx_nombre || "Movimientos.xlsx");
   }
   var btnVerAnalisis = $("btn-ver-analisis");
   var btnAddVinc = $("btn-add-vinc"), btnDelVinc = $("btn-del-vinc");
@@ -344,7 +345,7 @@
             guardarAnalisis(data);
             btnVerAnalisis.hidden = false;
             if (data.xlsx_base64) {
-              // Oficio: el extracto de movimientos se descarga de inmediato y
+              // Caso u oficio: el extracto de movimientos se descarga de inmediato y
               // queda disponible en «Descargar movimientos (XLSX)».
               btnXlsx.hidden = false;
               descargarXlsx(data);
