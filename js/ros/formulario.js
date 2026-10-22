@@ -110,15 +110,18 @@
   }
 
   // ------------------------------------------------------------------- //
-  // Tipo de reporte (Colombia: ROS / ROI). El ROI analiza los envíos que el
-  // cliente intentó y no se concretaron (devueltos, rechazados o con error).
+  // Tipo de reporte (Colombia: ROS / ROI). El ROS analiza las operaciones que
+  // el cliente realizó; el ROI, las mismas fuentes pero las que intentó y no se
+  // concretaron (rechazadas, devueltas, canceladas o declinadas).
   // ------------------------------------------------------------------- //
   var trepEls = document.querySelectorAll("[data-tiporep]");
   var trepInput = $("tipo_reporte");
   var TEXTOS_TIPOREP = {
-    ROS: "Analiza los envíos que el cliente realizó.",
-    ROI: "Analiza los envíos que el cliente intentó y no se concretaron (devueltos, rechazados "
-      + "o con error) y arma el reporte de Operaciones Intentadas de la UIAF.",
+    ROS: "Analiza todas las operaciones que el cliente realizó (ingresos, egresos y cambios "
+      + "de moneda) y entrega además el XLSX con esas operaciones.",
+    ROI: "Analiza las operaciones que el cliente intentó y no se concretaron (remesas devueltas, "
+      + "pagos y P2P rechazados, compras con tarjeta declinadas...) y arma el reporte de "
+      + "Operaciones Intentadas de la UIAF.",
   };
 
   function aplicarTipoReporte(tipo) {
