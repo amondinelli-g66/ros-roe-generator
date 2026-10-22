@@ -12,7 +12,7 @@
  *   RosModal.abrir(doc, ctx, callbacks)
  *     doc: el ros_doc (se muta in-place con cada edición)
  *     ctx: {pais, tipoDocumento, customerId}
- *     callbacks: {onChange(doc), onDescargar(doc, ctx), onEnviarAprobacion(doc, ctx, listo)}
+ *     callbacks: {onChange(doc), onDescargar(doc, ctx)}
  *   RosModal.cerrar()
  *   RosModal.setMensaje(texto, esError)
  *
@@ -36,9 +36,6 @@
   var btnCerrarX = document.getElementById("modal-cerrar");
   var btnCancelar = document.getElementById("modal-cancelar");
   var btnDescargar = document.getElementById("modal-descargar");
-  // "Enviar a aprobación": guarda el caso y lo manda por Slack a los
-  // aprobadores del país (solo ROS). Se habilita junto con la descarga.
-  var btnAprobacion = document.getElementById("modal-aprobacion");
 
   var _doc = null, _ctx = null, _callbacks = {};
 
@@ -581,7 +578,6 @@
       function (w) { return !estaOculto(w); }
     ).length;
     btnDescargar.disabled = invalidos > 0;
-    if (btnAprobacion) btnAprobacion.disabled = invalidos > 0;
   }
 
   // ------------------------------------------------------------------- //
@@ -744,7 +740,6 @@
   }
 
   function abrir(doc, ctx, callbacks) {
-    if (btnAprobacion) btnAprobacion.hidden = !(callbacks && callbacks.onEnviarAprobacion);
     _doc = doc; _ctx = ctx; _callbacks = callbacks || {};
     tagsEl.innerHTML = "";
     [ctx.tipoDocumento || "ROS", ctx.pais || ""].forEach(function (t) {
@@ -779,13 +774,6 @@
     if (btnDescargar.disabled || !_doc || !_callbacks.onDescargar) return;
     _callbacks.onDescargar(_doc, _ctx);
   });
-  if (btnAprobacion) {
-    btnAprobacion.addEventListener("click", function () {
-      if (btnAprobacion.disabled || !_doc || !_callbacks.onEnviarAprobacion) return;
-      btnAprobacion.disabled = true;   // un solo envío por clic
-      _callbacks.onEnviarAprobacion(_doc, _ctx, function () { actualizarBotonDescargar(); });
-    });
-  }
 
   window.RosModal = {
     // API pública de siempre (la usa js/ros/formulario.js).

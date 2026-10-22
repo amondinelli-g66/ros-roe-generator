@@ -173,36 +173,6 @@
   function abrirModalConAnalisis(analisis) {
     var ctx = { pais: analisis.pais, tipoDocumento: analisis.tipo_documento, customerId: analisis.customer_id };
     window.RosModal.abrir(analisis.ros_doc, ctx, {
-      onEnviarAprobacion: analisis.tipo_documento === "ROS" ? function (doc, ctxEnvio, listo) {
-        window.RosModal.setMensaje("Guardando el caso y enviándolo a aprobación…");
-        var s = analisis.solicitud || {};
-        api("/casos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pais: ctxEnvio.pais, customer_id: ctxEnvio.customerId, ros_doc: doc,
-            fecha_inicio: s.fecha_inicio, fecha_fin: s.fecha_fin, vinculados: s.vinculados, segmento: s.segmento,
-            origen: s.origen, tipo_reporte: s.tipo_reporte,
-          }),
-        })
-          .then(function (resp) {
-            if (manejar401(resp)) throw new Error("401");
-            return resp.json().then(function (data) {
-              if (resp.ok && data.estado === "OK") {
-                window.RosModal.setMensaje("Caso " + data.caso_id + " enviado a aprobación por Slack.");
-              } else {
-                window.RosModal.setMensaje(data.mensaje || "No se pudo enviar a aprobación.", true);
-                listo();
-              }
-            });
-          })
-          .catch(function (err) {
-            if (String(err && err.message) !== "401") {
-              window.RosModal.setMensaje("No se pudo contactar al servidor: " + err, true);
-            }
-            listo();
-          });
-      } : null,
       onChange: function (doc) {
         analisis.ros_doc = doc;
         guardarAnalisis(analisis);
@@ -338,13 +308,6 @@
         .then(function (res) {
           var data = res.data;
           if (res.ok && data.estado === "OK" && data.ros_doc) {
-            // Lo pedido viaja con el análisis: "Enviar a aprobación" lo necesita
-            // para volver a consultar los movimientos del CSV.
-            data.solicitud = {
-              fecha_inicio: form.fecha_inicio.value, fecha_fin: form.fecha_fin ? form.fecha_fin.value : "",
-              vinculados: form.vinculados ? form.vinculados.value : "", segmento: form.segmento.value,
-              origen: origInput.value, tipo_reporte: trepInput.value,
-            };
             guardarAnalisis(data);
             btnVerAnalisis.hidden = false;
             if (data.xlsx_base64) {
