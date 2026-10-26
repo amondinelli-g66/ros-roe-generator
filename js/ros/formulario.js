@@ -177,7 +177,7 @@
     window.RosModal.abrir(analisis.ros_doc, ctx, {
       onEntregar: analisis.tipo_documento === "ROS" && entregaWeb ? function (doc, ctxEnvio, listo) {
         window.RosModal.setMensaje("Entregando el ROS…");
-        api("/ros/entregar", {
+        api("/api/v1/ros/entregas/web", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
