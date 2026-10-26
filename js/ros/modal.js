@@ -12,7 +12,7 @@
  *   RosModal.abrir(doc, ctx, callbacks)
  *     doc: el ros_doc (se muta in-place con cada edición)
  *     ctx: {pais, tipoDocumento, customerId}
- *     callbacks: {onChange(doc), onDescargar(doc, ctx)}
+ *     callbacks: {onChange(doc), onDescargar(doc, ctx), onEntregar(doc, ctx, listo)}
  *   RosModal.cerrar()
  *   RosModal.setMensaje(texto, esError)
  *
@@ -36,6 +36,9 @@
   var btnCerrarX = document.getElementById("modal-cerrar");
   var btnCancelar = document.getElementById("modal-cancelar");
   var btnDescargar = document.getElementById("modal-descargar");
+  // "Entregar ROS": el analista aprueba y GEREO lo guarda en Drive y lo publica
+  // en el Slack del país (como hará WatchTower). Se habilita junto con la descarga.
+  var btnEntregar = document.getElementById("modal-entregar");
 
   var _doc = null, _ctx = null, _callbacks = {};
 
@@ -578,6 +581,7 @@
       function (w) { return !estaOculto(w); }
     ).length;
     btnDescargar.disabled = invalidos > 0;
+    if (btnEntregar) btnEntregar.disabled = invalidos > 0;
   }
 
   // ------------------------------------------------------------------- //
@@ -740,6 +744,7 @@
   }
 
   function abrir(doc, ctx, callbacks) {
+    if (btnEntregar) btnEntregar.hidden = !(callbacks && callbacks.onEntregar);
     _doc = doc; _ctx = ctx; _callbacks = callbacks || {};
     tagsEl.innerHTML = "";
     [ctx.tipoDocumento || "ROS", ctx.pais || ""].forEach(function (t) {
@@ -774,6 +779,15 @@
     if (btnDescargar.disabled || !_doc || !_callbacks.onDescargar) return;
     _callbacks.onDescargar(_doc, _ctx);
   });
+  if (btnEntregar) {
+    btnEntregar.addEventListener("click", function () {
+      if (btnEntregar.disabled || !_doc || !_callbacks.onEntregar) return;
+      if (!window.confirm("¿Entregar este ROS? Se guardará en Drive y se enviará al Oficial de "
+        + "Cumplimiento por Slack para autorizar la carga.")) return;
+      btnEntregar.disabled = true;   // un solo envío por clic
+      _callbacks.onEntregar(_doc, _ctx, function () { actualizarBotonDescargar(); });
+    });
+  }
 
   window.RosModal = {
     // API pública de siempre (la usa js/ros/formulario.js).
