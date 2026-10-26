@@ -145,6 +145,8 @@
     }), analisis.xlsx_nombre || "Movimientos.xlsx");
   }
   var btnVerAnalisis = $("btn-ver-analisis");
+  // ¿Se muestra "Entregar ROS"? Lo decide el backend (/config -> entrega_web).
+  var entregaWeb = false;
   var btnAddVinc = $("btn-add-vinc"), btnDelVinc = $("btn-del-vinc");
   var vincBox = $("vinc-box"), vincTa = $("vinculados");
   var vincCount = $("vinc-count"), vincMaxEl = $("vinc-max");
@@ -173,6 +175,33 @@
   function abrirModalConAnalisis(analisis) {
     var ctx = { pais: analisis.pais, tipoDocumento: analisis.tipo_documento, customerId: analisis.customer_id };
     window.RosModal.abrir(analisis.ros_doc, ctx, {
+      onEntregar: analisis.tipo_documento === "ROS" && entregaWeb ? function (doc, ctxEnvio, listo) {
+        window.RosModal.setMensaje("Entregando el ROS…");
+        api("/ros/entregar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pais: ctxEnvio.pais, customer_id: ctxEnvio.customerId, ros_doc: doc, cliente: analisis.cliente,
+          }),
+        })
+          .then(function (resp) {
+            if (manejar401(resp)) throw new Error("401");
+            return resp.json().then(function (data) {
+              if (resp.ok && data.estado === "RECIBIDO") {
+                window.RosModal.setMensaje("ROS entregado: quedó en Drive y se envió por Slack para autorizar la carga.");
+              } else {
+                window.RosModal.setMensaje(data.mensaje || "No se pudo entregar el ROS.", true);
+                listo();
+              }
+            });
+          })
+          .catch(function (err) {
+            if (String(err && err.message) !== "401") {
+              window.RosModal.setMensaje("No se pudo contactar al servidor: " + err, true);
+            }
+            listo();
+          });
+      } : null,
       onChange: function (doc) {
         analisis.ros_doc = doc;
         guardarAnalisis(analisis);
@@ -216,6 +245,7 @@
     // Máximo de vinculados: lo informa el backend. La promesa de /config está
     // memoizada en nucleo.js, así que esto NO agrega una llamada extra.
     GEREO.configuracion().then(function (cfg) {
+      entregaWeb = !!(cfg && cfg.entrega_web);
       if (cfg && Number.isInteger(cfg.vinculados_max)) {
         vincMax = cfg.vinculados_max; vincMaxEl.textContent = vincMax; actualizarConteoVinc();
       }
